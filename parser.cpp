@@ -230,3 +230,10 @@ TimData loadTIM(const string &filename)
 
     return data;
 }
+
+int TimData::numberof_timeslots(int i){
+    int k = 0;
+    for(auto& x : eventTimeslot[i])
+        k += x;
+    return k;
+}
