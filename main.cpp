@@ -1,5 +1,6 @@
 #include <iostream>
 #include "parser.h"
+#include "graph.h"
 
 using namespace std;
 
@@ -14,10 +15,16 @@ int main()
 
         TimData data = loadTIM("datasets/dataset" + to_string(i) + ".tim");
 
-        cout << "Events: " << data.E << endl;
-        cout << "Rooms: " << data.R << endl;
-        cout << "Features: " << data.F << endl;
-        cout << "Students: " << data.S << endl;
+        // cout << "Events: " << data.E << endl;
+        // cout << "Rooms: " << data.R << endl;
+        // cout << "Features: " << data.F << endl;
+        // cout << "Students: " << data.S << endl;
+
+        Graph G {data.E};
+        G.fill_vector(data.studentEvent);
+        for(auto& x : G.matrix_scheduled)
+            cout << x.scheduled << " ";
+        cout << endl;
         
         // dodatni debug
         // cout << "Timeslots: " << (data.eventTimeslot.empty() ? 0 : data.eventTimeslot[0].size()) << endl;
