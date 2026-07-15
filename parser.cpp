@@ -39,7 +39,7 @@ TimData loadTIM(const string& filename) {
 
     // provjera ispravnosti podataka u prvoj liniji
     if (data.E <= 0 || data.R <= 0 || data.F < 0 || data.S < 0) {
-        throw runtime_error("Neispravne vrijednosti u zaglavlju datoteke " + filename + ".");
+        throw runtime_error("Neispravne vrijednosti u zaglavlju datoteke " + filename);
     }
     
     // ucitava kapacitet svake ucionice
@@ -47,7 +47,7 @@ TimData loadTIM(const string& filename) {
     for (int r = 0; r < data.R; ++r) {
         data.roomSizes[r] = readInteger(file, "kapacitet ucionice");
         if (data.roomSizes[r] < 0) {
-            throw runtime_error("Kapacitet ucionice ne smije biti negativan.");
+            throw runtime_error("Kapacitet ucionice ne smije biti negativan");
         }
     }
 
@@ -97,7 +97,7 @@ TimData loadTIM(const string& filename) {
         for (int second = 0; second < data.E; ++second) {
             const int value = readInteger(file, "matrica prethodnosti");
             if (value < -1 || value > 1) {
-                throw runtime_error("Element matrice prethodnosti mora biti -1, 0 ili 1.");
+                throw runtime_error("Element matrice prethodnosti mora biti -1, 0 ili 1");
             }
             data.precedence[first][second] = value;
         }
@@ -106,7 +106,7 @@ TimData loadTIM(const string& filename) {
     // provjera postoji li visak podataka na kraju datoteke
     int extra = 0;
     if (file >> extra) {
-        throw runtime_error("Datoteka " + filename + " sadrzi visak podataka nakon matrice prethodnosti.");
+        throw runtime_error("Datoteka " + filename + " sadrzi visak podataka nakon matrice prethodnosti");
     }
 
     return data; // vraca potpuno popunjene podatke o instanci
@@ -116,7 +116,7 @@ TimData loadTIM(const string& filename) {
 // zbroj elemenata retka jednak je broju dostupnih termina
 int TimData::numberOfAvailableTimeslots(int event) const {
     if (event < 0 || event >= E) { // ne dopusta pristup retku koji ne postoji
-        throw out_of_range("Neispravan indeks dogadaja.");
+        throw out_of_range("Neispravan indeks dogadaja");
     }
 
     // vrijednosti 0 li 1, njihov zbroj je broj termina
