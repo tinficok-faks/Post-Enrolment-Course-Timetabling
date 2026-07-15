@@ -1,22 +1,26 @@
 #include "timetable.h"
 
-#include <algorithm>
-#include <bit>
-#include <limits>
-#include <stdexcept>
-#include <tuple>
+#include <algorithm> // max i sort
+#include <bit> // popcount za C++20
+#include <limits> // numeric_limits
+#include <stdexcept> // runtime_error
+#include <tuple> // usporedba vise kriterija uz tuple
 
 using namespace std;
 
-// Pomocna funkcija za brojanje jedinica u binarnom zapisu
+// Pomocna funkcija za brojanje jedinica u binarnom zapisu broja
 static int countBits(unsigned int value) {
 #if __cplusplus >= 202002L // ovo je ako compileamo s std=c++20
     return popcount(value);
 #else
-    return __builtin_popcount(value); // a ovo je ako po std=c++17
+    return __builtin_popcount(value); // a ovo je ako po std=c++17 i mozda starije
 #endif
 }
 
+// usporedjuje prioritet 2 dogadaja
+// kriterij prioriteta: 1. dogadaj s vise studenata
+//                      2. s vise konflikata
+//                      3. ako su 1. jednak 2. onda onaj s manjim indeksom
 static bool hasHigherPriority(const Graph& graph, int first, int second) {
     if (graph.numberOfStudents[first] != graph.numberOfStudents[second])
         return graph.numberOfStudents[first] > graph.numberOfStudents[second];
@@ -25,9 +29,10 @@ static bool hasHigherPriority(const Graph& graph, int first, int second) {
     return first < second;
 }
 
+// priprema potrebnih pomocnih struktura za kasnije
 GreedyTimetabler::GreedyTimetabler(const TimData& data, const Graph& graph) :
-        data_(data),
-        graph_(graph),
+        data_(data), // data_ = data
+        graph_(graph), // graph_ = graph
         schedule_(data.E),
         compatibleRoomMask_(data.E, 0U),
         compatibleRooms_(data.E),
