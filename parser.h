@@ -4,51 +4,33 @@
 #include <string>
 #include <vector>
 
-constexpr int NUMBER_OF_DAYS = 5;
-constexpr int SLOTS_PER_DAY = 9;
-constexpr int NUMBER_OF_TIMESLOTS = NUMBER_OF_DAYS * SLOTS_PER_DAY;
+using namespace std;
+
+constexpr int NUMBER_OF_DAYS = 5; // 5 radnih dana
+constexpr int SLOTS_PER_DAY = 9; // 9 predavanja dnevno
+constexpr int NUMBER_OF_TIMESLOTS = NUMBER_OF_DAYS * SLOTS_PER_DAY; // 45 termina tjedno/ukupno
 
 struct TimData {
-    int E = 0; // broj događaja
-    int R = 0; // broj učionica
-    int F = 0; // broj značajki
+    int E = 0; // broj dogadaja
+    int R = 0; // broj ucionica
+    int F = 0; // broj znacajki
     int S = 0; // broj studenata
 
-    std::vector<int> roomSizes;
-    std::vector<std::vector<int>> studentEvent;
-    std::vector<std::vector<int>> roomFeature;
-    std::vector<std::vector<int>> eventFeature;
-    std::vector<std::vector<int>> eventTimeslot;
-    std::vector<std::vector<int>> precedence;
+    vector<int> roomSizes; // kapacitet ucionice r
+    vector<vector<int>> studentEvent; // studetnEvent[s][e] = 1 ako student 's' pohada dogadaj 'e'; = 0 da ne
+    vector<vector<int>> roomFeature; // roomFeature[r][f] = 1 ako ucionica 'r' posjeduje znacajku 'f'; = 0 da ne
+    vector<vector<int>> eventFeature; // eventFeature[e][f] = 1 ako dogadaj 'e' zahtijeva znacajku 'f'; 0 da ne
+    vector<vector<int>> eventTimeslot; // eventTimeslot[e][t] = 1 znaci termin je dostupan; = 0 da nije
+    vector<vector<int>> precedence; // precedence[first][second] opisuje odnos redoslijeda:
+                                    // 1 - prvi dogadaj mora biti prije drugoga
+                                    // -1 - prvi dogadaj mora biti poslije drugoga
+                                    // 0 - nema zahtjeva za redoslijed
 
-    int numberOfAvailableTimeslots(int event) const;
+    int numberOfAvailableTimeslots(int event) const; // broj termina u koje se zadani dogadaj smije rasporediti
+                                                     // const jer nikad ne mijenja podatke objekta TimData
 };
 
-TimData loadTIM(const std::string& filename);
+// ucitava .tim datoteke i vraca ispunjen objekt TimData
+TimData loadTIM(const string& filename); // filename je naziv/put trenutne datoteke
 
 #endif
-
-
-// #ifndef PARSER_H
-
-// #define PARSER_H
-
-// #include <vector>
-// #include <string>
-
-// struct TimData {
-//     int E, R, F, S;
-
-//     std::vector<int> roomSizes;
-//     std::vector<std::vector<int>> studentEvent;
-//     std::vector<std::vector<int>> roomFeature;
-//     std::vector<std::vector<int>> eventFeature;
-//     std::vector<std::vector<int>> eventTimeslot;
-//     std::vector<std::vector<int>> precedence;
-
-//     int numberof_timeslots(int i);
-// };
-
-
-// TimData loadTIM(const std::string &filename);
-// #endif
