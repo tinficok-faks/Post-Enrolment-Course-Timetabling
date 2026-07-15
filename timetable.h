@@ -4,23 +4,28 @@
 #include "graph.h"
 #include "parser.h"
 
-#include <iosfwd>
+#include <ostream>
 #include <string>
 #include <vector>
 
 using namespace std;
 
+// termin i ucionica dodijeljeni jednom dogadaju
+// -1 znaci da dogadaj nije rasporeden
 struct Assignment {
     int timeslot = -1;
     int room = -1;
 
     bool isPlaced() const {
-        return timeslot >= 0 && room >= 0;
+        return timeslot != -1 && room != -1;
     }
 };
 
+// schedule[event] daje termin i ucionicu tog dogadaja
 using Schedule = vector<Assignment>;
 
+
+// Rezultat evaluacije rasporeda.
 struct Evaluation {
     int distanceToFeasibility = 0;
     int softCost = 0;
@@ -31,81 +36,160 @@ struct Evaluation {
     }
 };
 
+
+// rezultat provjere valjanosti rasporeda.
 struct ValidationResult {
     bool valid = true;
     vector<string> errors;
 };
 
+
 class GreedyTimetabler {
 public:
-    GreedyTimetabler(const TimData& data, const Graph& graph);
+    // konstruktor prima podatke instance i graf konflikata
+    GreedyTimetabler(
+        const TimData& data,
+        const Graph& graph
+    );
 
+    // stvara raspored pomocu pohlepnog algoritma
     Schedule solve();
 
 private:
+     // moguca pozicija jednog dogadaja
     struct Placement {
         int timeslot = -1;
         int room = -1;
-        int softDelta = 0;
-        long long futureBlocking = 0;
-        int roomWaste = 0;
+
+        int softCostIncrease = 0;
+        long long blockingCost = 0;
+        int unusedSeats = 0;
 
         bool exists() const {
-            return timeslot >= 0 && room >= 0;
+            return timeslot != -1 && room != -1;
         }
     };
 
+    // osnovni podaci problema
     const TimData& data_;
     const Graph& graph_;
 
+    // trenutni raspored
     Schedule schedule_;
-    vector<unsigned int> compatibleRoomMask_;
+
+    // compatibleRooms_[event] sadrzi ucionice koje odgovaraju dogadaju
     vector<vector<int>> compatibleRooms_;
+
+   // bitovni zapis odgovarajucih i zauzetih ucionica
+    vector<unsigned int> compatibleRoomMask_;
     vector<unsigned int> occupiedRoomMask_;
+
+    // roomEvent_[timeslot][room] sadrzi indeks dogadaja ili -1 ako je ucionica slobodna
     vector<vector<int>> roomEvent_;
+
+    // Raspored svakog studenta spremljen kao bitovni zapis (1/0)
     vector<unsigned long long> studentScheduleMask_;
 
+    // Podaci o prethodnosti dogadaja
     vector<vector<int>> predecessors_;
     vector<vector<int>> successors_;
     vector<int> remainingPredecessors_;
-    vector<unsigned char> processed_;
 
-    vector<vector<unsigned short>> neighbourTimeslotCount_;
+    // processed_[event] oznacava je li dogadaj vec obraden
+    vector<bool> processed_;
+
+    // broj konfliktnih susjeda u svakom terminu
+    vector<vector<int>> neighbourTimeslotCount_;
+
+    // dinamicki stupanj zasicenja svakog dogadaja
     vector<int> saturationDegree_;
 
+    // priprema podataka
     void buildCompatibleRooms();
     void buildPrecedenceGraph();
 
-    bool roomSatisfiesEvent(int room, int event) const;
-    int countCurrentlyFeasibleTimeslots(int event) const;
-    bool timeslotCanBeUsed(int event, int timeslot) const;
-    int chooseNextEvent(bool& brokePrecedenceCycle) const;
-    Placement choosePlacement(int event) const;
+    // provjere ucionice i termina
+    bool roomSatisfiesEvent(
+        int room,
+        int event
+    ) const;
 
-    int dailyPenalty(unsigned int nineSlotMask) const;
-    int incrementalSoftCost(int event, int timeslot) const;
-    long long futureBlockingCost(int event, int timeslot) const;
+    bool timeslotCanBeUsed(
+        int event,
+        int timeslot
+    ) const;
 
-    void markProcessed(int event);
-    void place(int event, const Placement& placement);
+    int countFeasibleTimeslots(
+        int event
+    ) const;
+
+    // odabir dogadaja i njegove pozicije
+    int chooseNextEvent(
+        bool& precedenceCycle
+    ) const;
+
+    Placement choosePlacement(
+        int event
+    ) const;
+
+    // racunanje troskova
+    int dailyPenalty(
+        unsigned int dayMask
+    ) const;
+
+    int softCostIncrease(
+        int event,
+        int timeslot
+    ) const;
+
+    long long blockingCost(
+        int event,
+        int timeslot
+    ) const;
+
+    // azuriranje rasporeda
+    void markProcessed(
+        int event
+    );
+
+    void placeEvent(
+        int event,
+        const Placement& placement
+    );
 };
 
-ValidationResult validateSchedule(const TimData& data,
-                                  const Graph& graph,
-                                  const Schedule& schedule,
-                                  size_t maximumReportedErrors = 100);
 
-void repairToValid(const TimData& data, const Graph& graph, Schedule& schedule);
-Evaluation evaluateSchedule(const TimData& data, const Graph& graph, const Schedule& schedule);
+// provjerava krsi li raspored neki cvrsti uvjet
+ValidationResult validateSchedule(
+    const TimData& data,
+    const Graph& graph,
+    const Schedule& schedule,
+    size_t maximumReportedErrors = 100
+);
 
-void writeSolutionFile(const string& filename, const Schedule& schedule);
-void writeReadableTimetable(ostream& output,
-                            const TimData& data,
-                            const Schedule& schedule,
-                            const string& instanceName);
-void writeReadableTimetableFile(const string& filename,
-                                const TimData& data,
-                                const Schedule& schedule,
-                                const string& instanceName);
+
+// Uklanja problematicke dogadaje dok raspored ne postane valjan
+void repairToValid(
+    const TimData& data,
+    const Graph& graph,
+    Schedule& schedule
+);
+
+
+// racuna udaljenost do dopustivosti i meki trosak
+Evaluation evaluateSchedule(
+    const TimData& data,
+    const Graph& graph,
+    const Schedule& schedule
+);
+
+
+// ispisuje citljiv raspored u terminal
+void writeReadableTimetable(
+    ostream& output,
+    const TimData& data,
+    const Schedule& schedule,
+    const string& instanceName
+);
 
 #endif
