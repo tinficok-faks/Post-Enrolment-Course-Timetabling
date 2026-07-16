@@ -1,78 +1,64 @@
 #include "timetable.h"
 
-#include <algorithm> // max i sort
-#include <bit> // popcount za C++20
-#include <limits> // numeric_limits
 #include <stdexcept> // runtime_error
-#include <tuple> // usporedba vise kriterija uz tuple
 
 using namespace std;
 
-// Pomocna funkcija za brojanje jedinica u binarnom zapisu broja
-static int countBits(unsigned int value) {
-#if __cplusplus >= 202002L // ovo je ako compileamo s std=c++20
-    return popcount(value);
-#else
-    return __builtin_popcount(value); // a ovo je ako po std=c++17 i mozda starije
-#endif
-}
-
-// usporedjuje prioritet 2 dogadaja
-// kriterij prioriteta: 1. dogadaj s vise studenata
-//                      2. s vise konflikata
-//                      3. ako su 1. jednak 2. onda onaj s manjim indeksom
+// Usporeduje dva dogadaja kada treba prekinuti ciklus prethodnosti.
 static bool hasHigherPriority(const Graph& graph, int first, int second) {
-    if (graph.numberOfStudents[first] != graph.numberOfStudents[second])
-        return graph.numberOfStudents[first] > graph.numberOfStudents[second];
-    if (graph.numberOfConflicts(first) != graph.numberOfConflicts(second))
-        return graph.numberOfConflicts(first) > graph.numberOfConflicts(second);
+    if (graph.numberOfStudents[first] > graph.numberOfStudents[second]) {
+        return true;
+    }
+
+    if (graph.numberOfStudents[first] < graph.numberOfStudents[second]) {
+        return false;
+    }
+
+    if (graph.numberOfConflicts(first) > graph.numberOfConflicts(second)) {
+        return true;
+    }
+
+    if (graph.numberOfConflicts(first) < graph.numberOfConflicts(second)) {
+        return false;
+    }
+
     return first < second;
 }
 
-// priprema potrebnih pomocnih struktura za kasnije
-GreedyTimetabler::GreedyTimetabler(const TimData& data, const Graph& graph) :
-        data_(data), // data_ = data
-        graph_(graph), // graph_ = graph
-        schedule_(data.E),
-        compatibleRoomMask_(data.E, 0U),
-        compatibleRooms_(data.E),
-        occupiedRoomMask_(NUMBER_OF_TIMESLOTS, 0U),
-        roomEvent_(NUMBER_OF_TIMESLOTS, vector<int>(data.R, -1)),
-        studentScheduleMask_(data.S, 0ULL),
-        predecessors_(data.E),
-        successors_(data.E),
-        remainingPredecessors_(data.E, 0),
-        processed_(data.E, 0),
-        neighbourTimeslotCount_(data.E, vector<int>(NUMBER_OF_TIMESLOTS, 0)),
-        saturationDegree_(data.E, 0) {
-    
+// Priprema prazne strukture koje se koriste tijekom rasporedivanja.
+GreedyTimetabler::GreedyTimetabler(const TimData& data, const Graph& graph)
+    : data_(data),
+      graph_(graph),
+      schedule_(data.E),
+      compatibleRooms_(data.E),
+      roomEvent_(NUMBER_OF_TIMESLOTS, vector<int>(data.R, -1)),
+      studentSchedule_(data.S, vector<int>(NUMBER_OF_TIMESLOTS, 0)),
+      predecessors_(data.E),
+      successors_(data.E),
+      remainingPredecessors_(data.E, 0),
+      processed_(data.E, false),
+      neighbourTimeslotCount_(data.E, vector<int>(NUMBER_OF_TIMESLOTS, 0)),
+      saturationDegree_(data.E, 0) {
+
     buildCompatibleRooms();
     buildPrecedenceGraph();
 }
 
+// Za svaki dogadaj sprema sve ucionice koje mu odgovaraju.
 void GreedyTimetabler::buildCompatibleRooms() {
     for (int event = 0; event < data_.E; ++event) {
         for (int room = 0; room < data_.R; ++room) {
             if (roomSatisfiesEvent(room, event)) {
                 compatibleRooms_[event].push_back(room);
-                compatibleRoomMask_[event] |= (1U << room);
             }
         }
-
-        sort(compatibleRooms_[event].begin(), compatibleRooms_[event].end(),
-                  [&](int first, int second) {
-                      if (data_.roomSizes[first] != data_.roomSizes[second]) {
-                          return data_.roomSizes[first] < data_.roomSizes[second];
-                      }
-                      return first < second;
-                  });
     }
 }
 
+// Iz matrice prethodnosti stvara popise prethodnika i sljedbenika.
 void GreedyTimetabler::buildPrecedenceGraph() {
     for (int first = 0; first < data_.E; ++first) {
         for (int second = 0; second < data_.E; ++second) {
-            // Vrijednost 1 znaci: first mora biti prije second.
             if (data_.precedence[first][second] == 1) {
                 successors_[first].push_back(second);
                 predecessors_[second].push_back(first);
@@ -81,50 +67,71 @@ void GreedyTimetabler::buildPrecedenceGraph() {
     }
 
     for (int event = 0; event < data_.E; ++event) {
-        remainingPredecessors_[event] = static_cast<int>(predecessors_[event].size());
+        remainingPredecessors_[event] =
+            static_cast<int>(predecessors_[event].size());
     }
 }
 
+// Provjerava kapacitet i potrebne znacajke ucionice.
 bool GreedyTimetabler::roomSatisfiesEvent(int room, int event) const {
     if (data_.roomSizes[room] < graph_.numberOfStudents[event]) {
         return false;
     }
 
     for (int feature = 0; feature < data_.F; ++feature) {
-        if (data_.eventFeature[event][feature] == 1 &&
-            data_.roomFeature[room][feature] == 0) {
+        bool eventNeedsFeature = data_.eventFeature[event][feature] == 1;
+        bool roomHasFeature = data_.roomFeature[room][feature] == 1;
+
+        if (eventNeedsFeature && !roomHasFeature) {
             return false;
         }
     }
+
     return true;
 }
 
+// Provjerava moze li se dogadaj staviti u zadani termin.
 bool GreedyTimetabler::timeslotCanBeUsed(int event, int timeslot) const {
     if (timeslot < 0 || timeslot >= NUMBER_OF_TIMESLOTS) {
         return false;
     }
+
+    // Dogadaj nije dostupan u tom terminu.
     if (data_.eventTimeslot[event][timeslot] == 0) {
         return false;
     }
-    if (neighbourTimeslotCount_[event][timeslot] != 0) {
+
+    // Neki konfliktni dogadaj vec koristi termin.
+    if (neighbourTimeslotCount_[event][timeslot] > 0) {
         return false;
     }
 
-    const unsigned int freeCompatibleRooms =
-        compatibleRoomMask_[event] & ~occupiedRoomMask_[timeslot];
-    if (freeCompatibleRooms == 0U) {
+    // Mora postojati barem jedna slobodna odgovarajuca ucionica.
+    bool freeRoomExists = false;
+
+    for (int room : compatibleRooms_[event]) {
+        if (roomEvent_[timeslot][room] == -1) {
+            freeRoomExists = true;
+            break;
+        }
+    }
+
+    if (!freeRoomExists) {
         return false;
     }
 
-    for (const int predecessor : predecessors_[event]) {
+    // Svaki rasporedeni prethodnik mora biti u ranijem terminu.
+    for (int predecessor : predecessors_[event]) {
         if (schedule_[predecessor].isPlaced() &&
             schedule_[predecessor].timeslot >= timeslot) {
             return false;
         }
     }
-    for (const int successor : successors_[event]) {
+
+    // Svaki rasporedeni sljedbenik mora biti u kasnijem terminu.
+    for (int successor : successors_[event]) {
         if (schedule_[successor].isPlaced() &&
-            timeslot >= schedule_[successor].timeslot) {
+            schedule_[successor].timeslot <= timeslot) {
             return false;
         }
     }
@@ -132,58 +139,76 @@ bool GreedyTimetabler::timeslotCanBeUsed(int event, int timeslot) const {
     return true;
 }
 
+// Broji koliko termina trenutno odgovara dogadaju.
 int GreedyTimetabler::countFeasibleTimeslots(int event) const {
-    if (compatibleRoomMask_[event] == 0U) {
+    if (compatibleRooms_[event].empty()) {
         return 0;
     }
 
     int count = 0;
+
     for (int timeslot = 0; timeslot < NUMBER_OF_TIMESLOTS; ++timeslot) {
         if (timeslotCanBeUsed(event, timeslot)) {
             ++count;
         }
     }
+
     return count;
 }
 
+// Odabire dogadaj koji je trenutno najteze rasporediti.
 int GreedyTimetabler::chooseNextEvent(bool& brokePrecedenceCycle) const {
     brokePrecedenceCycle = false;
+
     int bestEvent = -1;
-    int bestFeasibleTimeslots = numeric_limits<int>::max();
-
-    auto betterCandidate = [&](int event, int feasibleTimeslots) {
-        if (bestEvent == -1) {
-            return true;
-        }
-
-        // Pohlepni redoslijed:
-        // 1. najmanje trenutno mogucih termina (fail-first / least saturation),
-        // 2. vise studenata (veci moguci doprinos udaljenosti do dopustivosti),
-        // 3. veci dinamicki stupanj zasicenja,
-        // 4. vise konflikata,
-        // 5. manje staticki dostupnih termina.
-        return tuple<int, int, int, int, int, int>(
-                   feasibleTimeslots,
-                   -graph_.numberOfStudents[event],
-                   -saturationDegree_[event],
-                   -graph_.numberOfConflicts(event),
-                   data_.numberOfAvailableTimeslots(event),
-                   event) <
-               tuple<int, int, int, int, int, int>(
-                   bestFeasibleTimeslots,
-                   -graph_.numberOfStudents[bestEvent],
-                   -saturationDegree_[bestEvent],
-                   -graph_.numberOfConflicts(bestEvent),
-                   data_.numberOfAvailableTimeslots(bestEvent),
-                   bestEvent);
-    };
+    int bestFeasibleTimeslots = 0;
 
     for (int event = 0; event < data_.E; ++event) {
+        // Dogadaj mora biti neobraden i svi prethodnici moraju biti obradeni.
         if (processed_[event] || remainingPredecessors_[event] != 0) {
             continue;
         }
-        const int feasibleTimeslots = countFeasibleTimeslots(event);
-        if (betterCandidate(event, feasibleTimeslots)) {
+
+        int feasibleTimeslots = countFeasibleTimeslots(event);
+        bool better = false;
+
+        if (bestEvent == -1) {
+            better = true;
+        } else if (feasibleTimeslots < bestFeasibleTimeslots) {
+            better = true;
+        } else if (feasibleTimeslots == bestFeasibleTimeslots) {
+            int students = graph_.numberOfStudents[event];
+            int bestStudents = graph_.numberOfStudents[bestEvent];
+
+            if (students > bestStudents) {
+                better = true;
+            } else if (students == bestStudents) {
+                int saturation = saturationDegree_[event];
+                int bestSaturation = saturationDegree_[bestEvent];
+
+                if (saturation > bestSaturation) {
+                    better = true;
+                } else if (saturation == bestSaturation) {
+                    int conflicts = graph_.numberOfConflicts(event);
+                    int bestConflicts = graph_.numberOfConflicts(bestEvent);
+
+                    if (conflicts > bestConflicts) {
+                        better = true;
+                    } else if (conflicts == bestConflicts) {
+                        int available = data_.numberOfAvailableTimeslots(event);
+                        int bestAvailable = data_.numberOfAvailableTimeslots(bestEvent);
+
+                        if (available < bestAvailable) {
+                            better = true;
+                        } else if (available == bestAvailable && event < bestEvent) {
+                            better = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (better) {
             bestEvent = event;
             bestFeasibleTimeslots = feasibleTimeslots;
         }
@@ -193,92 +218,140 @@ int GreedyTimetabler::chooseNextEvent(bool& brokePrecedenceCycle) const {
         return bestEvent;
     }
 
-    // Zastita od ciklusa u matrici prethodnosti. U sluzbenim instancama se
-    // ciklus ne ocekuje. Jedan dogadaj ostavljamo nerasporeden kako bismo
-    // prekinuli ciklus i zadrzali valjan raspored.
+    // Ako nema dostupnog dogadaja, moguce je da postoji ciklus prethodnosti.
     brokePrecedenceCycle = true;
+
     for (int event = 0; event < data_.E; ++event) {
-        if (!processed_[event] &&
-            (bestEvent == -1 ||
-             remainingPredecessors_[event] < remainingPredecessors_[bestEvent] ||
-             (remainingPredecessors_[event] == remainingPredecessors_[bestEvent] &&
-              hasHigherPriority(graph_, event, bestEvent)))) {
+        if (processed_[event]) {
+            continue;
+        }
+
+        if (bestEvent == -1) {
+            bestEvent = event;
+            continue;
+        }
+
+        if (remainingPredecessors_[event] < remainingPredecessors_[bestEvent]) {
+            bestEvent = event;
+        } else if (remainingPredecessors_[event] ==
+                       remainingPredecessors_[bestEvent] &&
+                   hasHigherPriority(graph_, event, bestEvent)) {
             bestEvent = event;
         }
     }
+
     return bestEvent;
 }
 
-int GreedyTimetabler::dailyPenalty(unsigned int nineSlotMask) const {
-    const int classes = countBits(nineSlotMask);
-    int penalty = (classes == 1) ? 1 : 0;
+// Racuna meki trosak rasporeda jednog studenta tijekom jednog dana.
+int GreedyTimetabler::dailyPenalty(const vector<int>& daySchedule) const {
+    int numberOfClasses = 0;
 
-    if ((nineSlotMask & (1U << (SLOTS_PER_DAY - 1))) != 0U) {
+    for (int slot = 0; slot < SLOTS_PER_DAY; ++slot) {
+        if (daySchedule[slot] == 1) {
+            ++numberOfClasses;
+        }
+    }
+
+    int penalty = 0;
+
+    // Student ne bi trebao imati samo jedno predavanje u danu.
+    if (numberOfClasses == 1) {
         ++penalty;
     }
 
-    int runLength = 0;
+    // Student ne bi trebao imati predavanje u zadnjem terminu dana.
+    if (daySchedule[SLOTS_PER_DAY - 1] == 1) {
+        ++penalty;
+    }
+
+    int consecutiveClasses = 0;
+
     for (int slot = 0; slot < SLOTS_PER_DAY; ++slot) {
-        if ((nineSlotMask & (1U << slot)) != 0U) {
-            ++runLength;
+        if (daySchedule[slot] == 1) {
+            ++consecutiveClasses;
         } else {
-            if (runLength >= 3) {
-                penalty += runLength - 2;
+            if (consecutiveClasses >= 3) {
+                penalty += consecutiveClasses - 2;
             }
-            runLength = 0;
+
+            consecutiveClasses = 0;
         }
     }
-    if (runLength >= 3) {
-        penalty += runLength - 2;
+
+    // Ovaj dio obraduje niz koji zavrsava u zadnjem terminu dana.
+    if (consecutiveClasses >= 3) {
+        penalty += consecutiveClasses - 2;
     }
 
     return penalty;
 }
 
+// Racuna promjenu mekog troska ako se dogadaj doda u termin.
 int GreedyTimetabler::softCostIncrease(int event, int timeslot) const {
-    const int day = timeslot / SLOTS_PER_DAY;
-    const int offset = day * SLOTS_PER_DAY;
-    const unsigned int dayMask = (1U << SLOTS_PER_DAY) - 1U;
-    int delta = 0;
+    int day = timeslot / SLOTS_PER_DAY;
+    int firstSlotOfDay = day * SLOTS_PER_DAY;
+    int slotInsideDay = timeslot % SLOTS_PER_DAY;
+    int totalIncrease = 0;
 
-    for (const int student : graph_.studentsOfEvent[event]) {
-        const unsigned int before = static_cast<unsigned int>(
-            (studentScheduleMask_[student] >> offset) & dayMask);
-        const unsigned int after = before | (1U << (timeslot % SLOTS_PER_DAY));
-        delta += dailyPenalty(after) - dailyPenalty(before);
+    for (int student : graph_.studentsOfEvent[event]) {
+        vector<int> before(SLOTS_PER_DAY, 0);
+
+        for (int slot = 0; slot < SLOTS_PER_DAY; ++slot) {
+            before[slot] = studentSchedule_[student][firstSlotOfDay + slot];
+        }
+
+        vector<int> after = before;
+        after[slotInsideDay] = 1;
+
+        totalIncrease += dailyPenalty(after) - dailyPenalty(before);
     }
-    return delta;
+
+    return totalIncrease;
 }
 
+// Procjenjuje koliko bi odabrani termin blokirao jos neobradene susjede.
 long long GreedyTimetabler::blockingCost(int event, int timeslot) const {
     long long cost = 0;
-    for (const int neighbour : graph_.conflictList[event]) {
+
+    for (int neighbour : graph_.conflictList[event]) {
         if (processed_[neighbour]) {
             continue;
         }
-        if (data_.eventTimeslot[neighbour][timeslot] == 1 &&
-            neighbourTimeslotCount_[neighbour][timeslot] == 0) {
-            // Blokiranje dogadaja s mnogo studenata skuplje je jer bi njegovo
-            // nerasporedivanje vise povecalo udaljenost do dopustivosti.
-            cost += max(1, graph_.numberOfStudents[neighbour]);
+
+        bool neighbourCanUseTimeslot =
+            data_.eventTimeslot[neighbour][timeslot] == 1;
+        bool timeslotIsNotAlreadyBlocked =
+            neighbourTimeslotCount_[neighbour][timeslot] == 0;
+
+        if (neighbourCanUseTimeslot && timeslotIsNotAlreadyBlocked) {
+            int numberOfStudents = graph_.numberOfStudents[neighbour];
+
+            if (numberOfStudents < 1) {
+                numberOfStudents = 1;
+            }
+
+            cost += numberOfStudents;
         }
     }
+
     return cost;
 }
 
+// Odabire najbolji termin i ucionicu za zadani dogadaj.
 GreedyTimetabler::Placement GreedyTimetabler::choosePlacement(int event) const {
     Placement best;
-    bool hasBest = false;
+    bool bestExists = false;
 
     for (int timeslot = 0; timeslot < NUMBER_OF_TIMESLOTS; ++timeslot) {
         if (!timeslotCanBeUsed(event, timeslot)) {
             continue;
         }
 
-        const int increase = softCostIncrease(event, timeslot);
-        const long long blocking = blockingCost(event, timeslot);
+        int increase = softCostIncrease(event, timeslot);
+        long long blocking = blockingCost(event, timeslot);
 
-        for (const int room : compatibleRooms_[event]) {
+        for (int room : compatibleRooms_[event]) {
             if (roomEvent_[timeslot][room] != -1) {
                 continue;
             }
@@ -288,24 +361,38 @@ GreedyTimetabler::Placement GreedyTimetabler::choosePlacement(int event) const {
             candidate.room = room;
             candidate.softCostIncrease = increase;
             candidate.blockingCost = blocking;
-            candidate.unusedSeats = data_.roomSizes[room] - graph_.numberOfStudents[event];
+            candidate.unusedSeats =
+                data_.roomSizes[room] - graph_.numberOfStudents[event];
 
-            const auto candidateKey = tuple<long long, int, int, int, int>(
-                candidate.blockingCost,
-                candidate.softCostIncrease,
-                candidate.timeslot,
-                candidate.unusedSeats,
-                candidate.room);
-            const auto bestKey = tuple<long long, int, int, int, int>(
-                best.blockingCost,
-                best.softCostIncrease,
-                best.timeslot,
-                best.unusedSeats,
-                best.room);
+            bool better = false;
 
-            if (!hasBest || candidateKey < bestKey) {
+            if (!bestExists) {
+                better = true;
+            } else if (candidate.blockingCost < best.blockingCost) {
+                better = true;
+            } else if (candidate.blockingCost == best.blockingCost &&
+                       candidate.softCostIncrease < best.softCostIncrease) {
+                better = true;
+            } else if (candidate.blockingCost == best.blockingCost &&
+                       candidate.softCostIncrease == best.softCostIncrease &&
+                       candidate.timeslot < best.timeslot) {
+                better = true;
+            } else if (candidate.blockingCost == best.blockingCost &&
+                       candidate.softCostIncrease == best.softCostIncrease &&
+                       candidate.timeslot == best.timeslot &&
+                       candidate.unusedSeats < best.unusedSeats) {
+                better = true;
+            } else if (candidate.blockingCost == best.blockingCost &&
+                       candidate.softCostIncrease == best.softCostIncrease &&
+                       candidate.timeslot == best.timeslot &&
+                       candidate.unusedSeats == best.unusedSeats &&
+                       candidate.room < best.room) {
+                better = true;
+            }
+
+            if (better) {
                 best = candidate;
-                hasBest = true;
+                bestExists = true;
             }
         }
     }
@@ -313,59 +400,74 @@ GreedyTimetabler::Placement GreedyTimetabler::choosePlacement(int event) const {
     return best;
 }
 
+// Oznacava dogadaj kao obraden i oslobada njegove sljedbenike.
 void GreedyTimetabler::markProcessed(int event) {
     if (processed_[event]) {
         return;
     }
-    processed_[event] = 1;
-    for (const int successor : successors_[event]) {
+
+    processed_[event] = true;
+
+    for (int successor : successors_[event]) {
         if (!processed_[successor] && remainingPredecessors_[successor] > 0) {
             --remainingPredecessors_[successor];
         }
     }
 }
 
+// Sprema dogadaj u raspored i azurira pomocne podatke.
 void GreedyTimetabler::placeEvent(int event, const Placement& placement) {
-    schedule_[event] = {placement.timeslot, placement.room};
-    roomEvent_[placement.timeslot][placement.room] = event;
-    occupiedRoomMask_[placement.timeslot] |= (1U << placement.room);
+    schedule_[event].timeslot = placement.timeslot;
+    schedule_[event].room = placement.room;
 
-    for (const int student : graph_.studentsOfEvent[event]) {
-        studentScheduleMask_[student] |= (1ULL << placement.timeslot);
+    roomEvent_[placement.timeslot][placement.room] = event;
+
+    for (int student : graph_.studentsOfEvent[event]) {
+        studentSchedule_[student][placement.timeslot] = 1;
     }
 
-    for (const int neighbour : graph_.conflictList[event]) {
-        if (neighbourTimeslotCount_[neighbour][placement.timeslot] == 0 &&
-            !processed_[neighbour]) {
+    for (int neighbour : graph_.conflictList[event]) {
+        bool firstConflictInThisTimeslot =
+            neighbourTimeslotCount_[neighbour][placement.timeslot] == 0;
+
+        if (firstConflictInThisTimeslot && !processed_[neighbour]) {
             ++saturationDegree_[neighbour];
         }
+
         ++neighbourTimeslotCount_[neighbour][placement.timeslot];
     }
 
     markProcessed(event);
 }
 
+// Glavna metoda pohlepnog algoritma.
 Schedule GreedyTimetabler::solve() {
     int processedCount = 0;
+
     while (processedCount < data_.E) {
         bool brokePrecedenceCycle = false;
-        const int event = chooseNextEvent(brokePrecedenceCycle);
+        int event = chooseNextEvent(brokePrecedenceCycle);
+
         if (event < 0) {
             throw runtime_error("Nije moguce odabrati sljedeci dogadaj.");
         }
 
+        // Dogadaj koji prekida ciklus ostaje nerasporeden.
         if (brokePrecedenceCycle) {
             markProcessed(event);
             ++processedCount;
             continue;
         }
 
-        const Placement placement = choosePlacement(event);
+        Placement placement = choosePlacement(event);
+
         if (placement.exists()) {
             placeEvent(event, placement);
         } else {
+            // Ako nema valjane pozicije, dogadaj ostaje nerasporeden.
             markProcessed(event);
         }
+
         ++processedCount;
     }
 

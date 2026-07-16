@@ -87,10 +87,10 @@ private:
     // roomEvent_[timeslot][room] sadrzi indeks dogadaja ili -1 ako je ucionica slobodna
     vector<vector<int>> roomEvent_;
 
-    // Raspored svakog studenta spremljen kao bitovni zapis (1/0)
-    vector<unsigned long long> studentScheduleMask_;
+    // raspored svakog studenta spremljen kao bitovni zapis (1/0)
+    vector<vector<int>> studentSchedule_;
 
-    // Podaci o prethodnosti dogadaja
+    // podaci o redoslijedu dogadaja
     vector<vector<int>> predecessors_;
     vector<vector<int>> successors_;
     vector<int> remainingPredecessors_;
@@ -134,7 +134,7 @@ private:
 
     // racunanje troskova
     int dailyPenalty(
-        unsigned int dayMask
+        const vector<int>& daySchedule
     ) const;
 
     int softCostIncrease(
