@@ -43,7 +43,7 @@ GreedyTimetabler::GreedyTimetabler(const TimData& data, const Graph& graph) :
         successors_(data.E),
         remainingPredecessors_(data.E, 0),
         processed_(data.E, 0),
-        neighbourTimeslotCount_(data.E, vector<unsigned short>(NUMBER_OF_TIMESLOTS, 0)),
+        neighbourTimeslotCount_(data.E, vector<int>(NUMBER_OF_TIMESLOTS, 0)),
         saturationDegree_(data.E, 0) {
     
     buildCompatibleRooms();
@@ -132,7 +132,7 @@ bool GreedyTimetabler::timeslotCanBeUsed(int event, int timeslot) const {
     return true;
 }
 
-int GreedyTimetabler::countCurrentlyFeasibleTimeslots(int event) const {
+int GreedyTimetabler::countFeasibleTimeslots(int event) const {
     if (compatibleRoomMask_[event] == 0U) {
         return 0;
     }
@@ -182,7 +182,7 @@ int GreedyTimetabler::chooseNextEvent(bool& brokePrecedenceCycle) const {
         if (processed_[event] || remainingPredecessors_[event] != 0) {
             continue;
         }
-        const int feasibleTimeslots = countCurrentlyFeasibleTimeslots(event);
+        const int feasibleTimeslots = countFeasibleTimeslots(event);
         if (betterCandidate(event, feasibleTimeslots)) {
             bestEvent = event;
             bestFeasibleTimeslots = feasibleTimeslots;
@@ -235,7 +235,7 @@ int GreedyTimetabler::dailyPenalty(unsigned int nineSlotMask) const {
     return penalty;
 }
 
-int GreedyTimetabler::incrementalSoftCost(int event, int timeslot) const {
+int GreedyTimetabler::softCostIncrease(int event, int timeslot) const {
     const int day = timeslot / SLOTS_PER_DAY;
     const int offset = day * SLOTS_PER_DAY;
     const unsigned int dayMask = (1U << SLOTS_PER_DAY) - 1U;
@@ -250,7 +250,7 @@ int GreedyTimetabler::incrementalSoftCost(int event, int timeslot) const {
     return delta;
 }
 
-long long GreedyTimetabler::futureBlockingCost(int event, int timeslot) const {
+long long GreedyTimetabler::blockingCost(int event, int timeslot) const {
     long long cost = 0;
     for (const int neighbour : graph_.conflictList[event]) {
         if (processed_[neighbour]) {
@@ -275,8 +275,8 @@ GreedyTimetabler::Placement GreedyTimetabler::choosePlacement(int event) const {
             continue;
         }
 
-        const int softDelta = incrementalSoftCost(event, timeslot);
-        const long long blocking = futureBlockingCost(event, timeslot);
+        const int increase = softCostIncrease(event, timeslot);
+        const long long blocking = blockingCost(event, timeslot);
 
         for (const int room : compatibleRooms_[event]) {
             if (roomEvent_[timeslot][room] != -1) {
@@ -286,21 +286,21 @@ GreedyTimetabler::Placement GreedyTimetabler::choosePlacement(int event) const {
             Placement candidate;
             candidate.timeslot = timeslot;
             candidate.room = room;
-            candidate.softDelta = softDelta;
-            candidate.futureBlocking = blocking;
-            candidate.roomWaste = data_.roomSizes[room] - graph_.numberOfStudents[event];
+            candidate.softCostIncrease = increase;
+            candidate.blockingCost = blocking;
+            candidate.unusedSeats = data_.roomSizes[room] - graph_.numberOfStudents[event];
 
             const auto candidateKey = tuple<long long, int, int, int, int>(
-                candidate.futureBlocking,
-                candidate.softDelta,
+                candidate.blockingCost,
+                candidate.softCostIncrease,
                 candidate.timeslot,
-                candidate.roomWaste,
+                candidate.unusedSeats,
                 candidate.room);
             const auto bestKey = tuple<long long, int, int, int, int>(
-                best.futureBlocking,
-                best.softDelta,
+                best.blockingCost,
+                best.softCostIncrease,
                 best.timeslot,
-                best.roomWaste,
+                best.unusedSeats,
                 best.room);
 
             if (!hasBest || candidateKey < bestKey) {
@@ -325,7 +325,7 @@ void GreedyTimetabler::markProcessed(int event) {
     }
 }
 
-void GreedyTimetabler::place(int event, const Placement& placement) {
+void GreedyTimetabler::placeEvent(int event, const Placement& placement) {
     schedule_[event] = {placement.timeslot, placement.room};
     roomEvent_[placement.timeslot][placement.room] = event;
     occupiedRoomMask_[placement.timeslot] |= (1U << placement.room);
@@ -362,7 +362,7 @@ Schedule GreedyTimetabler::solve() {
 
         const Placement placement = choosePlacement(event);
         if (placement.exists()) {
-            place(event, placement);
+            placeEvent(event, placement);
         } else {
             markProcessed(event);
         }
