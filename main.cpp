@@ -1,46 +1,93 @@
-#include <iostream>
-#include "parser.h"
 #include "graph.h"
+#include "parser.h"
+#include "timetable.h"
 
-using namespace std;
+#include <filesystem>
+#include <iostream>
+#include <stdexcept>
+#include <string>
 
-int main()
-{
-    try
-    {
-        int i;
-        cout << "Izaberi dataset izmedju 1 i 24: ";
-        cin >> i;
-        cout << endl;
 
-        TimData data = loadTIM("datasets/dataset" + to_string(i) + ".tim");
+// Rjesava jedan dataset i ispisuje rezultat u terminal.
+Evaluation solveDataset(int datasetNumber, bool printTimetable) {
+    std::string instanceName = "dataset" + std::to_string(datasetNumber);
+    std::filesystem::path inputFile =
+        std::filesystem::path("datasets") / (instanceName + ".tim");
 
-        // cout << "Events: " << data.E << endl;
-        // cout << "Rooms: " << data.R << endl;
-        // cout << "Features: " << data.F << endl;
-        // cout << "Students: " << data.S << endl;
+    TimData data = loadTIM(inputFile.string());
 
-        Graph G {data.E};
-        G.fill_vector(data.studentEvent);
-        for(auto& x : G.matrix_scheduled)
-            cout << x.scheduled << " ";
-        cout << endl;
-        
-        // dodatni debug
-        // cout << "Timeslots: " << (data.eventTimeslot.empty() ? 0 : data.eventTimeslot[0].size()) << endl;
-        // cout << "roomSizes[0]=" << (data.roomSizes.empty() ? -1 : data.roomSizes[0]) << endl;
-        // cout << "studentEvent[0][0]=" << data.studentEvent[0][0] << endl;
-        // cout << "eventTimeslot[0][0]=" << (data.eventTimeslot.empty() ? -1 : data.eventTimeslot[0][0]) << endl;
+    Graph graph(data.E);
+    graph.fillVector(data.studentEvent);
 
-        // if (!data.precedence.empty())
-        // {
-        //     cout << "precedence[0][1]=" << data.precedence[0][1] << endl;
-        // }
+    GreedyTimetabler solver(data, graph);
+    Schedule schedule = solver.solve();
 
+    // Provjera je li raspored valjan.
+    ValidationResult validation = validateSchedule(data, graph, schedule);
+
+    // Ako nije valjan, pokusavamo ga popraviti uklanjanjem problematicnih dogadaja.
+    if (!validation.valid) {
+        std::cout << "Raspored nije valjan. Pokusavam ga popraviti.\n";
+
+        for (const std::string& error : validation.errors)
+            std::cout << "  - " << error << '\n';
+
+        repairToValid(data, graph, schedule);
+        validation = validateSchedule(data, graph, schedule);
     }
-    catch (const exception& error)
-    {
-        cerr << "Error: " << error.what() << endl;
+
+    if (!validation.valid)
+        throw std::runtime_error("Raspored nije valjan ni nakon popravka.");
+
+    Evaluation evaluation = evaluateSchedule(data, graph, schedule);
+
+    // ovo ispod je da sprema u outputs folder, zakomentirao sam ga jer je u nekim
+    // situacijama imalo problema, a i postao je clutter za pregledavati
+    // tijekom debuganinga jer moram gledati u dodatnu datoteku umjesto terminala
+
+    // std::filesystem::create_directories("outputs");
+
+    // writeSolutionFile(
+    //     "outputs/" + instanceName + ".sln",
+    //     schedule
+    // );
+
+    // writeReadableTimetableFile(
+    //     "outputs/raspored_" + instanceName + ".txt",
+    //     data,
+    //     schedule,
+    //     instanceName
+    // );
+
+    // citljiv raspored ispisujemo u terminal samo kada se pokrece jedan dataset.
+    if (printTimetable) {
+        writeReadableTimetable(std::cout, data, schedule, instanceName);
+        std::cout << std::endl;
+    }
+
+    std::cout << instanceName << '\n';
+    std::cout << "  udaljenost do dopustivosti: " << evaluation.distanceToFeasibility << '\n';
+    std::cout << "  trosak mekih uvjeta: " << evaluation.softCost << '\n';
+    std::cout << "  ukupan trosak: " << evaluation.totalCost() << '\n';
+    std::cout << "  nerasporedeni dogadaji: " << evaluation.unplacedEvents << "\n\n";
+
+    return evaluation;
+}
+
+int main() {
+    try{
+        int datasetNumber;
+    
+        std::cout << "Izaberi dataset izmedu 1 i 24: ";
+        std::cin >> datasetNumber;
+    
+        if (datasetNumber < 1 || datasetNumber > 24)
+            throw std::invalid_argument("Broj dataseta mora biti izmedu 1 i 24.");
+    
+        solveDataset(datasetNumber, true);
+    }
+    catch (const std::exception& error) {
+        std::cerr << "Greska: " << error.what() << '\n';
         return 1;
     }
 

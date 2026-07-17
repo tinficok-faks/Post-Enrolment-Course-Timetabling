@@ -3,24 +3,21 @@
 #define GRAPH_H
 
 #include <vector>
-using namespace std;
-
-struct Node {
-    int event_number;
-    bool scheduled;
-    Node (int k) : event_number{k}, scheduled{false} {};
-};
 
 struct Graph {
-    vector<vector<int>> events_conflict;
-    vector<Node> matrix_scheduled;
-    vector<int> number_of_students;
-    Graph (int n);
-    
-    void fill_vector(vector<vector<int>> &Table);
-    int  number_of_conflicts(int i);
-    bool is_scheduled(int i);
+    //matrica konflikata dogadaja (ako 2 predmeta slusa isti student, onda ne mogu biti u istom terminu)
+    //1 ako su u konfliktu, inace 0
+    std::vector<std::vector<int>> eventsConflict;
+    //svaki predmet ima listu predmeta s kojima je u konfliktu
+    std::vector<std::vector<int>> conflictList;
+    //biljezi studente koji slusaju pojedini predmet
+    std::vector<std::vector<int>> studentsOfEvent;
 
-    //dodati f-ju je li timeslot popunjen
+    explicit Graph(int numberOfEvents);
+
+    void fillVector(const std::vector<std::vector<int>>& studentEvent);
+    int numberOfConflicts(int event) const;
+    bool conflict(int firstEvent, int secondEvent) const;
 };
+
 #endif

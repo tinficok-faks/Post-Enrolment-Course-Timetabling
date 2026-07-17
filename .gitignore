@@ -1,3 +1,11 @@
 *.exe
 
 zavrsni_projekt.txt
+
+*.o
+*.obj
+
+.vscode/
+.vs/
+materijali/
+outputs/
