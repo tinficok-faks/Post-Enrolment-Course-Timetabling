@@ -191,4 +191,10 @@ void writeReadableTimetable(
     const std::string& instanceName
 );
 
+void writeReadableTimetableFile(
+    const std::string& filename,
+    const TimData& data,
+    const Schedule& schedule,
+    const std::string& instanceName
+);
 #endif
