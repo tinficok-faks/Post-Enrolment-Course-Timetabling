@@ -3,12 +3,11 @@
 #include <algorithm>
 #include <stdexcept>
 
-using namespace std;
 
 // odreduje koji dogadaj treba zadrzati kada dva dogadaja stvaraju konflikt
 static bool hasHigherPriority(const Graph& graph, int first, int second) {
-    if (graph.numberOfStudents[first] != graph.numberOfStudents[second])
-        return graph.numberOfStudents[first] > graph.numberOfStudents[second];
+    if (graph.studentsOfEvent[first].size() != graph.studentsOfEvent[second].size())
+        return graph.studentsOfEvent[first].size() > graph.studentsOfEvent[second].size();
 
     if (graph.numberOfConflicts(first) != graph.numberOfConflicts(second))
         return graph.numberOfConflicts(first) > graph.numberOfConflicts(second);
@@ -19,10 +18,10 @@ static bool hasHigherPriority(const Graph& graph, int first, int second) {
 ValidationResult validateSchedule(const TimData& data,
                                   const Graph& graph,
                                   const Schedule& schedule,
-                                  size_t maximumReportedErrors) {
+                                  std::size_t maximumReportedErrors) {
     ValidationResult result;
 
-    auto addError = [&](const string& message) {
+    auto addError = [&](const std::string& message) {
         result.valid = false;
         if (result.errors.size() < maximumReportedErrors) {
             result.errors.push_back(message);
@@ -34,53 +33,53 @@ ValidationResult validateSchedule(const TimData& data,
         return result;
     }
 
-    vector<vector<int>> roomEvent(
-        NUMBER_OF_TIMESLOTS, vector<int>(data.R, -1));
-    vector<vector<int>> studentEvent(
-        data.S, vector<int>(NUMBER_OF_TIMESLOTS, -1));
+    std::vector<std::vector<int>> roomEvent(
+        NUMBER_OF_TIMESLOTS, std::vector<int>(data.R, -1));
+    std::vector<std::vector<int>> studentEvent(
+        data.S, std::vector<int>(NUMBER_OF_TIMESLOTS, -1));
 
     for (int event = 0; event < data.E; ++event) {
         const Assignment assignment = schedule[event];
         if (!assignment.isPlaced()) {
             if (assignment.timeslot != -1 || assignment.room != -1) {
-                addError("Događaj " + to_string(event) +
+                addError("Događaj " + std::to_string(event) +
                          " mora imati ili oba indeksa -1 ili oba valjana indeksa.");
             }
             continue;
         }
 
         if (assignment.timeslot < 0 || assignment.timeslot >= NUMBER_OF_TIMESLOTS) {
-            addError("Događaj " + to_string(event) + " ima neispravan termin.");
+            addError("Događaj " + std::to_string(event) + " ima neispravan termin.");
             continue;
         }
         if (assignment.room < 0 || assignment.room >= data.R) {
-            addError("Događaj " + to_string(event) + " ima neispravnu učionicu.");
+            addError("Događaj " + std::to_string(event) + " ima neispravnu učionicu.");
             continue;
         }
 
         if (data.eventTimeslot[event][assignment.timeslot] == 0) {
-            addError("Događaj " + to_string(event) +
+            addError("Događaj " + std::to_string(event) +
                      " je stavljen u nedostupan termin " +
-                     to_string(assignment.timeslot) + ".");
+                     std::to_string(assignment.timeslot) + ".");
         }
 
-        if (data.roomSizes[assignment.room] < graph.numberOfStudents[event]) {
-            addError("Učionica " + to_string(assignment.room) +
-                     " premala je za događaj " + to_string(event) + ".");
+        if (data.roomSizes[assignment.room] < (int)(graph.studentsOfEvent[event].size())) {
+            addError("Učionica " + std::to_string(assignment.room) +
+                     " premala je za događaj " + std::to_string(event) + ".");
         }
         for (int feature = 0; feature < data.F; ++feature) {
             if (data.eventFeature[event][feature] == 1 &&
                 data.roomFeature[assignment.room][feature] == 0) {
-                addError("Učionica " + to_string(assignment.room) +
-                         " nema značajku " + to_string(feature) +
-                         " potrebnu događaju " + to_string(event) + ".");
+                addError("Učionica " + std::to_string(assignment.room) +
+                         " nema značajku " + std::to_string(feature) +
+                         " potrebnu događaju " + std::to_string(event) + ".");
             }
         }
 
         int& occupiedBy = roomEvent[assignment.timeslot][assignment.room];
         if (occupiedBy != -1) {
-            addError("Događaji " + to_string(occupiedBy) + " i " +
-                     to_string(event) + " koriste istu učionicu i termin.");
+            addError("Događaji " + std::to_string(occupiedBy) + " i " +
+                     std::to_string(event) + " koriste istu učionicu i termin.");
         } else {
             occupiedBy = event;
         }
@@ -88,9 +87,9 @@ ValidationResult validateSchedule(const TimData& data,
         for (const int student : graph.studentsOfEvent[event]) {
             int& otherEvent = studentEvent[student][assignment.timeslot];
             if (otherEvent != -1) {
-                addError("Student " + to_string(student) +
-                         " istodobno sluša događaje " + to_string(otherEvent) +
-                         " i " + to_string(event) + ".");
+                addError("Student " + std::to_string(student) +
+                         " istodobno sluša događaje " + std::to_string(otherEvent) +
+                         " i " + std::to_string(event) + ".");
             } else {
                 otherEvent = event;
             }
@@ -106,8 +105,8 @@ ValidationResult validateSchedule(const TimData& data,
                 schedule[second].isPlaced() &&
                 schedule[first].timeslot >= schedule[second].timeslot) {
                 addError("Prethodnost nije zadovoljena: događaj " +
-                         to_string(first) + " mora biti prije događaja " +
-                         to_string(second) + ".");
+                         std::to_string(first) + " mora biti prije događaja " +
+                         std::to_string(second) + ".");
             }
         }
     }
@@ -136,7 +135,7 @@ void repairToValid(const TimData& data, const Graph& graph, Schedule& schedule) 
             individuallyValid = false;
         }
         if (individuallyValid &&
-            data.roomSizes[assignment.room] < graph.numberOfStudents[event]) {
+            data.roomSizes[assignment.room] < (int)(graph.studentsOfEvent[event].size())) {
             individuallyValid = false;
         }
         if (individuallyValid) {
@@ -154,19 +153,19 @@ void repairToValid(const TimData& data, const Graph& graph, Schedule& schedule) 
     }
 
     // kod konflikata zadrzavamo događaj čije bi uklanjanje vise povecalo udaljenost do dopustivosti.
-    vector<int> order(data.E);
+    std::vector<int> order(data.E);
     for (int event = 0; event < data.E; ++event) {
         order[event] = event;
     }
-    sort(order.begin(), order.end(),
+    std::sort(order.begin(), order.end(),
               [&](int first, int second) {
                   return hasHigherPriority(graph, first, second);
               });
 
     Schedule kept(data.E);
-    vector<vector<int>> roomEvent(
-        NUMBER_OF_TIMESLOTS, vector<int>(data.R, -1));
-    vector<unsigned long long> studentMask(data.S, 0ULL);
+    std::vector<std::vector<int>> roomEvent(
+        NUMBER_OF_TIMESLOTS, std::vector<int>(data.R, -1));
+    std::vector<unsigned long long> studentMask(data.S, 0ULL);
 
     for (const int event : order) {
         const Assignment assignment = schedule[event];

@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-using namespace std;
 
 // termin i ucionica dodijeljeni jednom dogadaju
 // -1 znaci da dogadaj nije rasporeden
@@ -22,7 +21,7 @@ struct Assignment {
 };
 
 // schedule[event] daje termin i ucionicu tog dogadaja
-using Schedule = vector<Assignment>;
+using Schedule = std::vector<Assignment>;
 
 
 // Rezultat evaluacije rasporeda.
@@ -40,7 +39,7 @@ struct Evaluation {
 // rezultat provjere valjanosti rasporeda.
 struct ValidationResult {
     bool valid = true;
-    vector<string> errors;
+    std::vector<std::string> errors;
 };
 
 
@@ -78,31 +77,31 @@ private:
     Schedule schedule_;
 
     // compatibleRooms_[event] sadrzi ucionice koje odgovaraju dogadaju
-    vector<vector<int>> compatibleRooms_;
+    std::vector<std::vector<int>> compatibleRooms_;
 
-   // bitovni zapis odgovarajucih i zauzetih ucionica
-    vector<unsigned int> compatibleRoomMask_;
-    vector<unsigned int> occupiedRoomMask_;
+   //zapis odgovarajucih i zauzetih ucionica (1 ili 0)
+    std::vector<unsigned int> compatibleRoomMask_;
+    std::vector<unsigned int> occupiedRoomMask_;
 
     // roomEvent_[timeslot][room] sadrzi indeks dogadaja ili -1 ako je ucionica slobodna
-    vector<vector<int>> roomEvent_;
+    std::vector<std::vector<int>> roomEvent_;
 
-    // raspored svakog studenta spremljen kao bitovni zapis (1/0)
-    vector<vector<int>> studentSchedule_;
+    // raspored svakog studenta (1 ili 0)
+    std::vector<std::vector<int>> studentSchedule_;
 
     // podaci o redoslijedu dogadaja
-    vector<vector<int>> predecessors_;
-    vector<vector<int>> successors_;
-    vector<int> remainingPredecessors_;
+    std::vector<std::vector<int>> predecessors_;
+    std::vector<std::vector<int>> successors_;
+    std::vector<int> remainingPredecessors_;
 
     // processed_[event] oznacava je li dogadaj vec obraden
-    vector<bool> processed_;
+    std::vector<bool> processed_;
 
     // broj konfliktnih susjeda u svakom terminu
-    vector<vector<int>> neighbourTimeslotCount_;
+    std::vector<std::vector<int>> neighbourTimeslotCount_;
 
     // dinamicki stupanj zasicenja svakog dogadaja
-    vector<int> saturationDegree_;
+    std::vector<int> saturationDegree_;
 
     // priprema podataka
     void buildCompatibleRooms();
@@ -134,7 +133,7 @@ private:
 
     // racunanje troskova
     int dailyPenalty(
-        const vector<int>& daySchedule
+        const std::vector<int>& daySchedule
     ) const;
 
     int softCostIncrease(
@@ -164,7 +163,7 @@ ValidationResult validateSchedule(
     const TimData& data,
     const Graph& graph,
     const Schedule& schedule,
-    size_t maximumReportedErrors = 100
+    std::size_t maximumReportedErrors = 100
 );
 
 
@@ -186,10 +185,10 @@ Evaluation evaluateSchedule(
 
 // ispisuje citljiv raspored u terminal
 void writeReadableTimetable(
-    ostream& output,
+    std::ostream& output,
     const TimData& data,
     const Schedule& schedule,
-    const string& instanceName
+    const std::string& instanceName
 );
 
 #endif

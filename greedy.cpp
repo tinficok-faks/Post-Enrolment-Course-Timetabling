@@ -2,15 +2,14 @@
 
 #include <stdexcept> // runtime_error
 
-using namespace std;
 
 // Usporeduje dva dogadaja kada treba prekinuti ciklus prethodnosti.
 static bool hasHigherPriority(const Graph& graph, int first, int second) {
-    if (graph.numberOfStudents[first] > graph.numberOfStudents[second]) {
+    if (graph.studentsOfEvent[first].size() > graph.studentsOfEvent[second].size()) {
         return true;
     }
 
-    if (graph.numberOfStudents[first] < graph.numberOfStudents[second]) {
+    if (graph.studentsOfEvent[first].size() < graph.studentsOfEvent[second].size()) {
         return false;
     }
 
@@ -31,13 +30,13 @@ GreedyTimetabler::GreedyTimetabler(const TimData& data, const Graph& graph)
       graph_(graph),
       schedule_(data.E),
       compatibleRooms_(data.E),
-      roomEvent_(NUMBER_OF_TIMESLOTS, vector<int>(data.R, -1)),
-      studentSchedule_(data.S, vector<int>(NUMBER_OF_TIMESLOTS, 0)),
+      roomEvent_(NUMBER_OF_TIMESLOTS, std::vector<int>(data.R, -1)),
+      studentSchedule_(data.S, std::vector<int>(NUMBER_OF_TIMESLOTS, 0)),
       predecessors_(data.E),
       successors_(data.E),
       remainingPredecessors_(data.E, 0),
       processed_(data.E, false),
-      neighbourTimeslotCount_(data.E, vector<int>(NUMBER_OF_TIMESLOTS, 0)),
+      neighbourTimeslotCount_(data.E, std::vector<int>(NUMBER_OF_TIMESLOTS, 0)),
       saturationDegree_(data.E, 0) {
 
     buildCompatibleRooms();
@@ -74,7 +73,7 @@ void GreedyTimetabler::buildPrecedenceGraph() {
 
 // Provjerava kapacitet i potrebne znacajke ucionice.
 bool GreedyTimetabler::roomSatisfiesEvent(int room, int event) const {
-    if (data_.roomSizes[room] < graph_.numberOfStudents[event]) {
+    if (data_.roomSizes[room] < (int)(graph_.studentsOfEvent[event].size())) {
         return false;
     }
 
@@ -169,6 +168,7 @@ int GreedyTimetabler::chooseNextEvent(bool& brokePrecedenceCycle) const {
             continue;
         }
 
+        //greedy odabir
         int feasibleTimeslots = countFeasibleTimeslots(event);
         bool better = false;
 
@@ -177,8 +177,8 @@ int GreedyTimetabler::chooseNextEvent(bool& brokePrecedenceCycle) const {
         } else if (feasibleTimeslots < bestFeasibleTimeslots) {
             better = true;
         } else if (feasibleTimeslots == bestFeasibleTimeslots) {
-            int students = graph_.numberOfStudents[event];
-            int bestStudents = graph_.numberOfStudents[bestEvent];
+            int students = graph_.studentsOfEvent[event].size();
+            int bestStudents = graph_.studentsOfEvent[bestEvent].size();
 
             if (students > bestStudents) {
                 better = true;
@@ -244,7 +244,7 @@ int GreedyTimetabler::chooseNextEvent(bool& brokePrecedenceCycle) const {
 }
 
 // Racuna meki trosak rasporeda jednog studenta tijekom jednog dana.
-int GreedyTimetabler::dailyPenalty(const vector<int>& daySchedule) const {
+int GreedyTimetabler::dailyPenalty(const std::vector<int>& daySchedule) const {
     int numberOfClasses = 0;
 
     for (int slot = 0; slot < SLOTS_PER_DAY; ++slot) {
@@ -295,13 +295,13 @@ int GreedyTimetabler::softCostIncrease(int event, int timeslot) const {
     int totalIncrease = 0;
 
     for (int student : graph_.studentsOfEvent[event]) {
-        vector<int> before(SLOTS_PER_DAY, 0);
+        std::vector<int> before(SLOTS_PER_DAY, 0);
 
         for (int slot = 0; slot < SLOTS_PER_DAY; ++slot) {
             before[slot] = studentSchedule_[student][firstSlotOfDay + slot];
         }
 
-        vector<int> after = before;
+        std::vector<int> after = before;
         after[slotInsideDay] = 1;
 
         totalIncrease += dailyPenalty(after) - dailyPenalty(before);
@@ -325,7 +325,7 @@ long long GreedyTimetabler::blockingCost(int event, int timeslot) const {
             neighbourTimeslotCount_[neighbour][timeslot] == 0;
 
         if (neighbourCanUseTimeslot && timeslotIsNotAlreadyBlocked) {
-            int numberOfStudents = graph_.numberOfStudents[neighbour];
+            int numberOfStudents = graph_.studentsOfEvent[neighbour].size();
 
             if (numberOfStudents < 1) {
                 numberOfStudents = 1;
@@ -361,8 +361,7 @@ GreedyTimetabler::Placement GreedyTimetabler::choosePlacement(int event) const {
             candidate.room = room;
             candidate.softCostIncrease = increase;
             candidate.blockingCost = blocking;
-            candidate.unusedSeats =
-                data_.roomSizes[room] - graph_.numberOfStudents[event];
+            candidate.unusedSeats = data_.roomSizes[room] - graph_.studentsOfEvent[event].size();
 
             bool better = false;
 
@@ -449,7 +448,7 @@ Schedule GreedyTimetabler::solve() {
         int event = chooseNextEvent(brokePrecedenceCycle);
 
         if (event < 0) {
-            throw runtime_error("Nije moguce odabrati sljedeci dogadaj.");
+            throw std::runtime_error("Nije moguce odabrati sljedeci dogadaj.");
         }
 
         // Dogadaj koji prekida ciklus ostaje nerasporeden.

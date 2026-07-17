@@ -1,24 +1,22 @@
 #include "timetable.h"
 
-#include <array>
+
 #include <filesystem>
 #include <fstream>
-#include <iomanip>
 #include <stdexcept>
 
-using namespace std;
 
-static void createParentFolder(const string& filename) {
-    filesystem::path path(filename);
+static void createParentFolder(const std::string& filename) {
+    std::filesystem::path path(filename);
     if (path.has_parent_path())
-        filesystem::create_directories(path.parent_path());
+        std::filesystem::create_directories(path.parent_path());
 }
 
-void writeSolutionFile(const string& filename, const Schedule& schedule) {
+void writeSolutionFile(const std::string& filename, const Schedule& schedule) {
     createParentFolder(filename);
-    ofstream output(filename);
+    std::ofstream output(filename);
     if (!output) {
-        throw runtime_error("Ne mogu otvoriti izlaznu datoteku: " + filename);
+        throw std::runtime_error("Ne mogu otvoriti izlaznu datoteku: " + filename);
     }
 
     for (const Assignment assignment : schedule) {
@@ -26,13 +24,13 @@ void writeSolutionFile(const string& filename, const Schedule& schedule) {
     }
 }
 
-void writeReadableTimetable(ostream& output,
+void writeReadableTimetable(std::ostream& output,
                             const TimData& data,
                             const Schedule& schedule,
-                            const string& instanceName) {
-    vector<vector<int>> roomEvent(
-        NUMBER_OF_TIMESLOTS, vector<int>(data.R, -1));
-    vector<int> unplaced;
+                            const std::string& instanceName) {
+    std::vector<std::vector<int>> roomEvent(
+        NUMBER_OF_TIMESLOTS, std::vector<int>(data.R, -1));
+    std::vector<int> unplaced;
 
     for (int event = 0; event < data.E; ++event) {
         if (schedule[event].isPlaced()) {
@@ -43,33 +41,32 @@ void writeReadableTimetable(ostream& output,
     }
 
     output << "Raspored za " << instanceName << "\n";
-    output << "Događaji su označeni slovom E i indeksom iz ulazne datoteke.\n\n";
+    output << "Dogadaji su oznaceni slovom E i indeksom iz ulazne datoteke.\n\n";
 
-    const array<string, NUMBER_OF_DAYS> dayNames = {
-        "PON", "UTO", "SRI", "CET", "PET"};
+    const std::vector<std::string> dayNames = {"PON", "UTO", "SRI", "CET", "PET"};
 
     for (int room = 0; room < data.R; ++room) {
         output << "Ucionica " << room << " (kapacitet " << data.roomSizes[room] << ")\n";
-        output << left << setw(7) << "sat";
-        for (const string& day : dayNames) {
-            output << setw(10) << day;
+        output << std::left << std::setw(7) << "sat";
+        for (auto& day : dayNames) {
+            output << std::setw(10) << day;
         }
         output << '\n';
 
         for (int hour = 0; hour < SLOTS_PER_DAY; ++hour) {
-            output << left << setw(7) << hour;
+            output << std::left << std::setw(7) << hour;
             for (int day = 0; day < NUMBER_OF_DAYS; ++day) {
                 const int timeslot = day * SLOTS_PER_DAY + hour;
                 const int event = roomEvent[timeslot][room];
-                const string cell = (event == -1) ? "-" : "E" + to_string(event);
-                output << setw(10) << cell;
+                const std::string cell = (event == -1) ? "-" : "E" + std::to_string(event);
+                output << std::setw(10) << cell;
             }
             output << '\n';
         }
         output << '\n';
     }
 
-    output << "Neraspoređeni događaji (" << unplaced.size() << "):";
+    output << "Nerasporedeni dogadaji (" << unplaced.size() << "):";
     if (unplaced.empty()) {
         output << " nema";
     } else {
@@ -80,14 +77,14 @@ void writeReadableTimetable(ostream& output,
     output << "\n";
 }
 
-void writeReadableTimetableFile(const string& filename,
+void writeReadableTimetableFile(const std::string& filename,
                                 const TimData& data,
                                 const Schedule& schedule,
-                                const string& instanceName) {
+                                const std::string& instanceName) {
     createParentFolder(filename);
-    ofstream output(filename);
+    std::ofstream output(filename);
     if (!output) {
-        throw runtime_error("Ne mogu otvoriti izlaznu datoteku: " + filename);
+        throw std::runtime_error("Ne mogu otvoriti izlaznu datoteku: " + filename);
     }
     writeReadableTimetable(output, data, schedule, instanceName);
 }

@@ -7,13 +7,12 @@
 #include <stdexcept>
 #include <string>
 
-using namespace std;
 
 // Rjesava jedan dataset i ispisuje rezultat u terminal.
 Evaluation solveDataset(int datasetNumber, bool printTimetable) {
-    string instanceName = "dataset" + to_string(datasetNumber);
-    filesystem::path inputFile =
-        filesystem::path("datasets") / (instanceName + ".tim");
+    std::string instanceName = "dataset" + std::to_string(datasetNumber);
+    std::filesystem::path inputFile =
+        std::filesystem::path("datasets") / (instanceName + ".tim");
 
     TimData data = loadTIM(inputFile.string());
 
@@ -28,17 +27,17 @@ Evaluation solveDataset(int datasetNumber, bool printTimetable) {
 
     // Ako nije valjan, pokusavamo ga popraviti uklanjanjem problematicnih dogadaja.
     if (!validation.valid) {
-        cout << "Raspored nije valjan. Pokusavam ga popraviti.\n";
+        std::cout << "Raspored nije valjan. Pokusavam ga popraviti.\n";
 
-        for (const string& error : validation.errors)
-            cout << "  - " << error << '\n';
+        for (const std::string& error : validation.errors)
+            std::cout << "  - " << error << '\n';
 
         repairToValid(data, graph, schedule);
         validation = validateSchedule(data, graph, schedule);
     }
 
     if (!validation.valid)
-        throw runtime_error("Raspored nije valjan ni nakon popravka.");
+        throw std::runtime_error("Raspored nije valjan ni nakon popravka.");
 
     Evaluation evaluation = evaluateSchedule(data, graph, schedule);
 
@@ -46,7 +45,7 @@ Evaluation solveDataset(int datasetNumber, bool printTimetable) {
     // situacijama imalo problema, a i postao je clutter za pregledavati
     // tijekom debuganinga jer moram gledati u dodatnu datoteku umjesto terminala
 
-    // filesystem::create_directories("outputs");
+    // std::filesystem::create_directories("outputs");
 
     // writeSolutionFile(
     //     "outputs/" + instanceName + ".sln",
@@ -62,42 +61,33 @@ Evaluation solveDataset(int datasetNumber, bool printTimetable) {
 
     // citljiv raspored ispisujemo u terminal samo kada se pokrece jedan dataset.
     if (printTimetable) {
-        writeReadableTimetable(cout, data, schedule, instanceName);
-        cout << endl;
+        writeReadableTimetable(std::cout, data, schedule, instanceName);
+        std::cout << std::endl;
     }
 
-    cout << instanceName << '\n';
-    cout << "  udaljenost do dopustivosti: " << evaluation.distanceToFeasibility << '\n';
-    cout << "  trosak mekih uvjeta: " << evaluation.softCost << '\n';
-    cout << "  ukupan trosak: " << evaluation.totalCost() << '\n';
-    cout << "  nerasporedeni dogadaji: " << evaluation.unplacedEvents << "\n\n";
+    std::cout << instanceName << '\n';
+    std::cout << "  udaljenost do dopustivosti: " << evaluation.distanceToFeasibility << '\n';
+    std::cout << "  trosak mekih uvjeta: " << evaluation.softCost << '\n';
+    std::cout << "  ukupan trosak: " << evaluation.totalCost() << '\n';
+    std::cout << "  nerasporedeni dogadaji: " << evaluation.unplacedEvents << "\n\n";
 
     return evaluation;
 }
 
-int main(int argc, char* argv[]) {
-    try {
-        // Pokretanje svih dataseta: program.exe --all
-        if (argc >= 2 && string(argv[1]) == "--all") {
-            for (int dataset = 1; dataset <= 24; ++dataset)
-                solveDataset(dataset, false);
-        }
-        else {
-            int datasetNumber;
-
-            cout << "Izaberi dataset izmedu 1 i 24: ";
-            cin >> datasetNumber;
-
-            if (datasetNumber < 1 || datasetNumber > 24)
-                throw invalid_argument(
-                    "Broj dataseta mora biti izmedu 1 i 24."
-                );
-
-            solveDataset(datasetNumber, true);
-        }
+int main() {
+    try{
+        int datasetNumber;
+    
+        std::cout << "Izaberi dataset izmedu 1 i 24: ";
+        std::cin >> datasetNumber;
+    
+        if (datasetNumber < 1 || datasetNumber > 24)
+            throw std::invalid_argument("Broj dataseta mora biti izmedu 1 i 24.");
+    
+        solveDataset(datasetNumber, true);
     }
-    catch (const exception& error) {
-        cerr << "Greska: " << error.what() << '\n';
+    catch (const std::exception& error) {
+        std::cerr << "Greska: " << error.what() << '\n';
         return 1;
     }
 

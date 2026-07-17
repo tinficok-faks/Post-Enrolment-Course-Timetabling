@@ -3,12 +3,10 @@
 #include <bit>
 #include <stdexcept>
 
-using namespace std;
-
 
 static int countBits(unsigned int value) {
 #if __cplusplus >= 202002L // ovo je ako compileamo s std=c++20
-    return popcount(value);
+    return std::popcount(value);
 #else
     return __builtin_popcount(value); // a ovo je ako po std=c++17
 #endif
@@ -20,17 +18,16 @@ Evaluation evaluateSchedule(const TimData& data,
                             const Schedule& schedule) {
     const ValidationResult validation = validateSchedule(data, graph, schedule, 1);
     if (!validation.valid) {
-        throw invalid_argument(
-            "Nije moguće evaluirati raspored koji krši čvrste uvjete.");
+        throw std::invalid_argument("Nije moguće evaluirati raspored koji krši čvrste uvjete.");
     }
 
     Evaluation evaluation;
-    vector<unsigned long long> studentMask(data.S, 0ULL);
+    std::vector<unsigned long long> studentMask(data.S, 0ULL);
 
     for (int event = 0; event < data.E; ++event) {
         if (!schedule[event].isPlaced()) {
             ++evaluation.unplacedEvents;
-            evaluation.distanceToFeasibility += graph.numberOfStudents[event];
+            evaluation.distanceToFeasibility += graph.studentsOfEvent[event].size();
             continue;
         }
         for (const int student : graph.studentsOfEvent[event]) {
