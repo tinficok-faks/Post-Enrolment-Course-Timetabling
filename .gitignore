@@ -1,5 +1,6 @@
 *.exe
 
+linkovi.txt
 zavrsni_projekt.txt
 
 *.o
@@ -9,3 +10,5 @@ zavrsni_projekt.txt
 .vs/
 materijali/
 outputs/
+datasets/
+C:\Users\Marko\Desktop\Post-Enrolment-Course-Timetabling\datasets
