@@ -12,7 +12,7 @@
 Evaluation solveDataset(int datasetNumber, bool printTimetable) {
     std::string instanceName = "dataset" + std::to_string(datasetNumber);
     std::filesystem::path inputFile =
-        std::filesystem::path("datasets") / (instanceName + ".tim");
+        std::filesystem::path("../datasets") / (instanceName + ".tim");
 
     TimData data = loadTIM(inputFile.string());
 
@@ -53,17 +53,17 @@ Evaluation solveDataset(int datasetNumber, bool printTimetable) {
     // );
 
     if (printTimetable) {
-        writeReadableTimetable(std::cout, data, schedule, instanceName);
+        writeReadableTimetable(std::cout, data, schedule);
         std::cout << std::endl;
     }
     else{
         writeReadableTimetableFile(
-            "outputs/raspored_" + instanceName + "_greedy" + ".txt",
+            "../outputs/raspored_" + instanceName + "_greedy.txt",
             data,
-            schedule,
-            instanceName
-        );
+            schedule
+            );
     }
+    writeEventsdata(data, graph);
 
     std::cout << instanceName << '\n';
     std::cout << "  udaljenost do dopustivosti: " << evaluation.distanceToFeasibility << '\n';

@@ -9,6 +9,7 @@
 #include <vector>
 
 
+
 // termin i ucionica dodijeljeni jednom dogadaju
 // -1 znaci da dogadaj nije rasporeden
 struct Assignment {
@@ -187,14 +188,25 @@ Evaluation evaluateSchedule(
 void writeReadableTimetable(
     std::ostream& output,
     const TimData& data,
-    const Schedule& schedule,
-    const std::string& instanceName
+    const Schedule& schedule
+    //,const std::string& instanceName
 );
 
 void writeReadableTimetableFile(
     const std::string& filename,
     const TimData& data,
-    const Schedule& schedule,
-    const std::string& instanceName
+    const Schedule& schedule
+    //,const std::string& instanceName
 );
+
+template <typename T>
+void printContainer(std::ofstream& output, const T& container);
+
+void writeEventsdata(
+    const TimData& data,
+    const Graph& graph
+);
+
+
 #endif
+
