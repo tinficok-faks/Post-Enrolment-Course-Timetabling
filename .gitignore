@@ -1,5 +1,6 @@
 *.exe
 
+linkovi.txt
 zavrsni_projekt.txt
 
 *.o
@@ -7,5 +8,6 @@ zavrsni_projekt.txt
 
 .vscode/
 .vs/
+file_readings/
 materijali/
 outputs/

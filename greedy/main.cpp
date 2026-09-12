@@ -12,7 +12,7 @@
 Evaluation solveDataset(int datasetNumber, bool printTimetable) {
     std::string instanceName = "dataset" + std::to_string(datasetNumber);
     std::filesystem::path inputFile =
-        std::filesystem::path("datasets") / (instanceName + ".tim");
+        std::filesystem::path("../datasets") / (instanceName + ".tim");
 
     TimData data = loadTIM(inputFile.string());
 
@@ -52,18 +52,18 @@ Evaluation solveDataset(int datasetNumber, bool printTimetable) {
     //     schedule
     // );
 
-    // writeReadableTimetableFile(
-    //     "outputs/raspored_" + instanceName + ".txt",
-    //     data,
-    //     schedule,
-    //     instanceName
-    // );
-
-    // citljiv raspored ispisujemo u terminal samo kada se pokrece jedan dataset.
     if (printTimetable) {
-        writeReadableTimetable(std::cout, data, schedule, instanceName);
+        writeReadableTimetable(std::cout, data, schedule);
         std::cout << std::endl;
     }
+    else{
+        writeReadableTimetableFile(
+            "../outputs/raspored_" + instanceName + "_greedy.txt",
+            data,
+            schedule
+            );
+    }
+    writeEventsdata(data, graph);
 
     std::cout << instanceName << '\n';
     std::cout << "  udaljenost do dopustivosti: " << evaluation.distanceToFeasibility << '\n';
@@ -84,7 +84,7 @@ int main() {
         if (datasetNumber < 1 || datasetNumber > 24)
             throw std::invalid_argument("Broj dataseta mora biti izmedu 1 i 24.");
     
-        solveDataset(datasetNumber, true);
+        solveDataset(datasetNumber, false);
     }
     catch (const std::exception& error) {
         std::cerr << "Greska: " << error.what() << '\n';
