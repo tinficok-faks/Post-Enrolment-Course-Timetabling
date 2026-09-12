@@ -16,6 +16,9 @@ int dailyPenalty(int student, int day, const std::vector<std::vector<int>>& stud
         if(studentSchedule[student][firstSlot + i] == 1){
             Eventnumber++;
             consecutive++;
+            if(i == 8 && (consecutive > 2)){
+                penalty += consecutive - 2;
+            }
         }
         else{
             // SC1: 3+ uzastopna eventa u danu
@@ -311,11 +314,7 @@ void findBestSwap(
 ) {
     for (int event1 = 0; event1 < schedule.numberOfEvents; ++event1){
 
-        int timeslot1 =
-            schedule.currentTimeslot[event1];
-
-        int room1 =
-            schedule.currentRoom[event1];
+        int timeslot1 = schedule.currentTimeslot[event1];
 
 
         // event2 pocinje od event1 + 1 jer nema potrebe
@@ -324,11 +323,9 @@ void findBestSwap(
              event2 < schedule.numberOfEvents;
              ++event2)
         {
-            int timeslot2 =
-                schedule.currentTimeslot[event2];
+            int timeslot2 = schedule.currentTimeslot[event2];
 
-            int room2 =
-                schedule.currentRoom[event2];
+            int room2 = schedule.currentRoom[event2];
 
             if (timeslot2 == -1 || room2 == -1)
                 continue;
@@ -353,14 +350,31 @@ void findBestSwap(
 
             // 2. room constraints
 
-            // event1 preuzima room2
-            if (!schedule.roomCompatible(event1, room2))
-                continue;
+            int newRoom1 = -1;
+            int newRoom2 = -1;        
 
-            // event2 preuzima room1
-            if (!schedule.roomCompatible(event2, room1))
-                continue;
+            // postoji li kompatibilna soba za event1
+            for(int i = 0; i < schedule.numberOfRooms; ++i){
+                int occupant = schedule.placedEvents[timeslot2][i];
+                if(schedule.roomCompatible(event1, i) 
+                   && (occupant == -1 || occupant == event2)){
+                    newRoom1 = i;
+                    break;
+                }
+            }
 
+            // postoji li kompatibilna soba za event2
+            for(int i = 0; i < schedule.numberOfRooms; ++i){
+                int occupant = schedule.placedEvents[timeslot1][i];
+                if(schedule.roomCompatible(event2, i) 
+                   && (occupant == -1 || occupant == event1)){
+                    newRoom2 = i;
+                    break;
+                }
+            }
+
+            if (newRoom1 == -1 || newRoom2 == -1)
+                continue;
 
             // 3. konflikti zbog studenata
 
@@ -394,9 +408,7 @@ void findBestSwap(
                 if (conflict == event1)
                     continue;
 
-                if (schedule.currentTimeslot[conflict]
-                    == timeslot1)
-                {
+                if (schedule.currentTimeslot[conflict] == timeslot1){
                     conflict_exists = true;
                     break;
                 }
@@ -454,7 +466,7 @@ void findBestSwap(
                 }
 
 
-                // precedence za event1
+                // precedence za event2
 
                 // event2 mora biti prije otherEvent
                 if (schedule.precedence[event2][otherEvent] == 1)
@@ -466,7 +478,7 @@ void findBestSwap(
                     }
                 }
 
-                // otherEvent mora biti prije event2.
+                // otherEvent mora biti prije event2
                 if (schedule.precedence[otherEvent][event2] == 1)
                 {
                     if (otherTimeslot
@@ -506,7 +518,8 @@ void findBestSwap(
                 bestMove.secondEvent = event2;
 
                 bestMove.timeslot = timeslot2;
-                bestMove.room = room2;
+                bestMove.room = newRoom1;
+                bestMove.room2 = newRoom2;
                 bestMove.method = 's';
             }
         }
@@ -559,16 +572,19 @@ void applySwap(
 
     // 1. zamjena evenata
 
-    schedule.placedEvents[timeslot2][room2] = event1;
-    schedule.placedEvents[timeslot1][room1] = event2;
+    schedule.placedEvents[timeslot2][room2] = -1;
+    schedule.placedEvents[timeslot1][room1] = -1;
+
+    schedule.placedEvents[timeslot2][move.room] = event1;
+    schedule.placedEvents[timeslot1][move.room2] = event2;
 
     // 2. currentTimeslot i currentRoom
 
     schedule.currentTimeslot[event1] = timeslot2;
-    schedule.currentRoom[event1] = room2;
+    schedule.currentRoom[event1] = move.room;
 
     schedule.currentTimeslot[event2] = timeslot1;
-    schedule.currentRoom[event2] = room1;
+    schedule.currentRoom[event2] = move.room2;
 
 
     // 3. studentSchedule
@@ -613,6 +629,8 @@ void applySwap(
 
 void best_improving_neighbor(TabuSearch& schedule){
 
+    schedule.initializePositions();
+
     for (int event = 0; event < schedule.numberOfEvents; ++event) {
         if (schedule.currentTimeslot[event] == -1) {
             std::cerr << "Local Search zahtijeva feasible raspored.\n";
@@ -622,7 +640,6 @@ void best_improving_neighbor(TabuSearch& schedule){
     
     std::vector<std::vector<int>> StudentSchedule = 
         buildStudentSchedule(schedule.S, schedule.placedEvents, schedule.studentsOfEvent);
-    schedule.initializePositions();
     while (true) {
 
         Move bestMove;

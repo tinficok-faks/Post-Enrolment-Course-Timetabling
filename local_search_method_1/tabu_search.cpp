@@ -462,8 +462,17 @@ bool TabuSearch::solve(int maxIterations){
 
         applyMove(bestMove);
 
-
         // spremi najbolje rjesenje koje si nasao
+        int currentCost = static_cast<int>(unplacedEvents.size());
+
+        if (currentCost < locallyBestCost){
+            locallyBestCost = currentCost;
+
+            bestPlacedEvents = placedEvents;
+
+            bestUnplacedEvents = unplacedEvents;
+
+        }
     }
 
 
