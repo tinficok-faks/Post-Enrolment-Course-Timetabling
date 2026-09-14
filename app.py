@@ -24,6 +24,7 @@ DAYS = ["Pon", "Uto", "Sri", "Čet", "Pet"]
 SLOTS_PER_DAY = 9
 ROOMS_PER_ROW = 4
 
+
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -367,7 +368,88 @@ class App(ctk.CTk):
         except Exception as error:
             self.after(0, self.algorithm_failed, "Local Search 1", str(error))
 
+    def start_local_search_2(self):
+        # -----------------------------------------------------------------
+        # TODO: LOCAL SEARCH 2
+        # 1. build Greedy
+        # 2. run Greedy za trenutno odabrani dataset
+        # 3. build LOCAL_SEARCH_2_DIR
+        # 4. run main.exe / main u LOCAL_SEARCH_2_DIR
+        # 5. učitaj izlaznu .sln/.txt datoteku
+        # 6. pozovi self.algorithm_finished("Local Search 2", output_file)
+        #
+        # Primjer:
+        #
+        # threading.Thread(
+        #     target=self.local_search_2_worker,
+        #     daemon=True
+        # ).start()
+        # -----------------------------------------------------------------
 
+        messagebox.showinfo(
+            "Local Search 2"
+        )
+
+    # def local_search_2_worker(self):
+    #     try:
+    #         greedy_build = self.build_project(GREEDY_DIR)
+    #         if greedy_build.returncode != 0:
+    #             raise RuntimeError(
+    #                 self.format_process_error(
+    #                     "Greedy build potreban za LS2 nije uspio",
+    #                     greedy_build
+    #                 )
+    #             )
+    #
+    #         greedy_run = self.run_executable(
+    #             GREEDY_DIR,
+    #             self.selected_dataset_number
+    #         )
+    #         if greedy_run.returncode != 0:
+    #             raise RuntimeError(
+    #                 self.format_process_error(
+    #                     "Greedy priprema za LS2 nije uspjela",
+    #                     greedy_run
+    #                 )
+    #             )
+    #
+    #         ls2_build = self.build_project(LOCAL_SEARCH_2_DIR)
+    #         if ls2_build.returncode != 0:
+    #             raise RuntimeError(
+    #                 self.format_process_error(
+    #                     "Local Search 2 build nije uspio",
+    #                     ls2_build
+    #                 )
+    #             )
+    #
+    #         ls2_run = self.run_executable(
+    #             LOCAL_SEARCH_2_DIR,
+    #             self.selected_dataset_number
+    #         )
+    #         if ls2_run.returncode != 0:
+    #             raise RuntimeError(
+    #                 self.format_process_error(
+    #                     "Local Search 2 nije uspješno izvršen",
+    #                     ls2_run
+    #                 )
+    #             )
+    #
+    #         output_file = (
+    #             LOCAL_SEARCH_2_OUTPUT_DIR
+    #             / f"ls2_output{self.selected_dataset_number}.sln"
+    #         )
+    #
+    #         self.after(
+    #             0,
+    #             self.algorithm_finished,
+    #             "Local Search 2",
+    #             output_file
+    #         )
+    #
+    #     except Exception as error:
+    #         self.after(0, self.algorithm_failed, "Local Search 2", str(error))
+
+    
     # Build / subprocess pomocne metode
     def build_project(self, project_dir):
         if not project_dir.exists():
@@ -433,6 +515,7 @@ class App(ctk.CTk):
 
         return f"{title}.\n\n{details}"
 
+
     # rezultati i njihov prikaz
     def algorithm_finished(self, algorithm_name, output_file):
         try:
@@ -469,12 +552,6 @@ class App(ctk.CTk):
 
         finally:
             self.set_running_state(False)
-
-    def start_local_search_2(self):
-        messagebox.showinfo(
-            "Local Search 2"
-        )
-
 
     def algorithm_failed(self, algorithm_name, error):
         self.set_running_state(False)
@@ -698,6 +775,7 @@ class App(ctk.CTk):
 
         # LS2 za sada uvijek ostaje disabled jer ga nema
         self.local_search_2_button.configure(state="disabled")
+
 
 if __name__ == "__main__":
     app = App()
