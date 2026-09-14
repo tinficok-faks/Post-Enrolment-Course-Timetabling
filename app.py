@@ -16,7 +16,7 @@ class App(ctk.CTk):
         super().__init__()
 
         self.title("Generator rasporeda")
-        self.geometry("600x400")
+        self.geometry("1024x640")
 
         self.selected_dataset = None
 
