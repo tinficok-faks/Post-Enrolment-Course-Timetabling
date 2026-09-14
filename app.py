@@ -273,6 +273,165 @@ class App(ctk.CTk):
         except Exception as error:
             self.after(0, self.algorithm_failed, "Greedy", str(error))
 
+    def start_local_search_1(self):
+        if not self.ensure_dataset_selected():
+            return
+
+        if self.is_running:
+            return
+
+        self.set_running_state(True)
+        self.status_label.configure(
+            text=(
+                f"Local Search 1: priprema Greedy rasporeda za "
+                f"dataset{self.selected_dataset_number}..."
+            )
+        )
+
+        threading.Thread(
+            target=self.local_search_1_worker,
+            daemon=True
+        ).start()
+
+    def local_search_1_worker(self):
+        try:
+            greedy_build = self.build_project(GREEDY_DIR)
+
+            if greedy_build.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        "Greedy build potreban za LS1 nije uspio",
+                        greedy_build
+                    )
+                )
+
+            greedy_run = self.run_executable(
+                GREEDY_DIR,
+                self.selected_dataset_number
+            )
+
+            if greedy_run.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        "Greedy priprema za LS1 nije uspjela",
+                        greedy_run
+                    )
+                )
+
+            self.after(
+                0,
+                self.status_label.configure,
+                {
+                    "text": (
+                        f"Local Search 1: build i optimizacija "
+                        f"dataset{self.selected_dataset_number}..."
+                    )
+                }
+            )
+
+            ls1_build = self.build_project(LOCAL_SEARCH_1_DIR)
+
+            if ls1_build.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        "Local Search 1 build nije uspio",
+                        ls1_build
+                    )
+                )
+
+            ls1_run = self.run_executable(
+                LOCAL_SEARCH_1_DIR,
+                self.selected_dataset_number
+            )
+
+            if ls1_run.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        "Local Search 1 nije uspješno izvršen",
+                        ls1_run
+                    )
+                )
+
+            output_file = (
+                LOCAL_SEARCH_1_OUTPUT_DIR
+                / f"ts_output{self.selected_dataset_number}.sln"
+            )
+
+            self.after(
+                0,
+                self.algorithm_finished,
+                "Local Search 1",
+                output_file
+            )
+
+        except Exception as error:
+            self.after(0, self.algorithm_failed, "Local Search 1", str(error))
+
+
+    # Build / subprocess pomocne metode
+    def build_project(self, project_dir):
+        if not project_dir.exists():
+            raise FileNotFoundError(f"Folder ne postoji: {project_dir}")
+
+        make_command = self.find_make_command()
+
+        return subprocess.run(
+            [make_command],
+            cwd=project_dir,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace"
+        )
+
+    def run_executable(self, project_dir, dataset_number):
+        executable = self.find_executable(project_dir)
+
+        return subprocess.run(
+            [str(executable)],
+            cwd=project_dir,
+            input=f"{dataset_number}\n",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace"
+        )
+
+    @staticmethod
+    def find_make_command():
+        #kako bi radilo za obojicu jer jedan ima make, a drugi mingw32-make
+        for command in ("make", "mingw32-make"):
+            if shutil.which(command):
+                return command
+
+        raise FileNotFoundError(
+            "Nije pronađen 'make' niti 'mingw32-make'. "
+        )
+
+    @staticmethod
+    def find_executable(project_dir):
+        candidates = [
+            project_dir / "main.exe",
+            project_dir / "main"
+        ]
+
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+
+        raise FileNotFoundError(
+            f"Nakon builda nije pronađen main.exe niti main u folderu: "
+            f"{project_dir}"
+        )
+
+    @staticmethod
+    def format_process_error(title, result):
+        details = (result.stderr or result.stdout or "").strip()
+
+        if not details:
+            details = f"Proces je završio s kodom {result.returncode}."
+
+        return f"{title}.\n\n{details}"
 
 
 if __name__ == "__main__":
