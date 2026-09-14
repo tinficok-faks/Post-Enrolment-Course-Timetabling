@@ -131,7 +131,7 @@ class App(ctk.CTk):
             padx=18, pady=(4, 14), sticky="ew"
         )
 
-def create_results_section(self):
+    def create_results_section(self):
         results_container = ctk.CTkFrame(self)
         results_container.grid(
             row=3, column=0, padx=24, pady=(10, 24), sticky="nsew"
@@ -171,107 +171,108 @@ def create_results_section(self):
         )
 
 
-        # dataset
-        def select_dataset(self):
-            file_path = filedialog.askopenfilename(
-                title="Odaberi dataset",
-                initialdir=DATASETS_DIR,
-                filetypes=[
-                    ("TIM files", "*.tim"),
-                    ("All files", "*.*")
-                ]
+    # dataset
+    def select_dataset(self):
+        file_path = filedialog.askopenfilename(
+            title="Odaberi dataset",
+            initialdir=DATASETS_DIR,
+            filetypes=[
+                ("TIM files", "*.tim"),
+                ("All files", "*.*")
+            ]
+        )
+
+        if not file_path:
+            return
+
+        dataset = Path(file_path)
+
+        match = re.fullmatch(r"dataset(\d+)", dataset.stem, flags=re.IGNORECASE)
+
+        if not match:
+            messagebox.showerror(
+                "Neispravan naziv dataseta",
+                "Trenutni C++ kod očekuje datoteke naziva dataset1.tim, "
+                "dataset2.tim, ..., dataset24.tim."
+            )
+            return
+
+        dataset_number = int(match.group(1))
+
+        if not 1 <= dataset_number <= 24:
+            messagebox.showerror(
+                "Neispravan dataset",
+                "Broj dataseta mora biti između 1 i 24."
+            )
+            return
+
+        self.selected_dataset = dataset
+        self.selected_dataset_number = dataset_number
+
+        self.dataset_label.configure(
+            text=f"Odabrano: {dataset.name}"
+        )
+        self.status_label.configure(
+            text=f"Spremno za pokretanje algoritma nad {dataset.name}."
+        )
+
+        self.clear_results(
+            message="Odaberi Greedy, Local Search 1 ili 2 za prikaz rasporeda."
+        )
+
+    
+    # pokretanje algoritama
+    def start_greedy(self):
+        if not self.ensure_dataset_selected():
+            return
+
+        if self.is_running:
+            return
+
+        self.set_running_state(True)
+        self.status_label.configure(
+            text=f"Greedy: build i pokretanje za dataset{self.selected_dataset_number}..."
+        )
+
+        threading.Thread(
+            target=self.greedy_worker,
+            daemon=True
+        ).start()
+
+    def greedy_worker(self):
+        try:
+            build_result = self.build_project(GREEDY_DIR)
+
+            if build_result.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error("Greedy build nije uspio", build_result)
+                )
+
+            run_result = self.run_executable(
+                GREEDY_DIR,
+                self.selected_dataset_number
             )
 
-            if not file_path:
-                return
-
-            dataset = Path(file_path)
-
-            match = re.fullmatch(r"dataset(\d+)", dataset.stem, flags=re.IGNORECASE)
-
-            if not match:
-                messagebox.showerror(
-                    "Neispravan naziv dataseta",
-                    "Trenutni C++ kod očekuje datoteke naziva dataset1.tim, "
-                    "dataset2.tim, ..., dataset24.tim."
+            if run_result.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error("Greedy nije uspješno izvršen", run_result)
                 )
-                return
 
-            dataset_number = int(match.group(1))
-
-            if not 1 <= dataset_number <= 24:
-                messagebox.showerror(
-                    "Neispravan dataset",
-                    "Broj dataseta mora biti između 1 i 24."
-                )
-                return
-
-            self.selected_dataset = dataset
-            self.selected_dataset_number = dataset_number
-
-            self.dataset_label.configure(
-                text=f"Odabrano: {dataset.name}"
-            )
-            self.status_label.configure(
-                text=f"Spremno za pokretanje algoritma nad {dataset.name}."
+            output_file = (
+                GREEDY_OUTPUT_DIR
+                / f"raspored_dataset{self.selected_dataset_number}_greedy.txt"
             )
 
-            self.clear_results(
-                message="Odaberi Greedy, Local Search 1 ili 2 za prikaz rasporeda."
+            self.after(
+                0,
+                self.algorithm_finished,
+                "Greedy",
+                output_file
             )
 
+        except Exception as error:
+            self.after(0, self.algorithm_failed, "Greedy", str(error))
 
-        # pokretanje algoritama
-        def start_greedy(self):
-            if not self.ensure_dataset_selected():
-                return
-    
-            if self.is_running:
-                return
-    
-            self.set_running_state(True)
-            self.status_label.configure(
-                text=f"Greedy: build i pokretanje za dataset{self.selected_dataset_number}..."
-            )
-    
-            threading.Thread(
-                target=self.greedy_worker,
-                daemon=True
-            ).start()
-    
-        def greedy_worker(self):
-            try:
-                build_result = self.build_project(GREEDY_DIR)
-    
-                if build_result.returncode != 0:
-                    raise RuntimeError(
-                        self.format_process_error("Greedy build nije uspio", build_result)
-                    )
-    
-                run_result = self.run_executable(
-                    GREEDY_DIR,
-                    self.selected_dataset_number
-                )
-    
-                if run_result.returncode != 0:
-                    raise RuntimeError(
-                        self.format_process_error("Greedy nije uspješno izvršen", run_result)
-                    )
-    
-                output_file = (
-                    GREEDY_OUTPUT_DIR
-                    / f"raspored_dataset{self.selected_dataset_number}_greedy.txt"
-                )
-    
-                self.after(
-                    0,
-                    self.algorithm_finished,
-                    "Greedy",
-                    output_file
-                )
-    
-            except Exception as error:
-                self.after(0, self.algorithm_failed, "Greedy", str(error))        
 
 
 if __name__ == "__main__":
