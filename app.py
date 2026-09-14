@@ -714,7 +714,7 @@ class App(ctk.CTk):
                 if event is None:
                     cells.append("  -  ")
                 else:
-                    cells.append(f"E{event:<3}")
+                    cells.append(f" E{event:<3}")
 
             lines.append(
                 f"{slot_in_day + 1:>6} | " + " | ".join(cells)
