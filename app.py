@@ -458,8 +458,6 @@ class App(ctk.CTk):
                 )
             )
 
-        
-
         except Exception as error:
             messagebox.showerror(
                 "Greška pri prikazu rezultata",
@@ -472,10 +470,6 @@ class App(ctk.CTk):
         finally:
             self.set_running_state(False)
 
-    def start_local_search_2(self):
-        messagebox.showinfo(
-                    "Local Search 2"
-                )
 
     def algorithm_failed(self, algorithm_name, error):
         self.set_running_state(False)
