@@ -412,7 +412,7 @@ bool TabuSearch::solve(int maxIterations){
     bestCost = locallyBestCost;
 
     std::cout
-        << "Tabu Search pocinje s "
+        << "Tabu pretrazivanje pocinje s "
         << unplacedEvents.size()
         << " nerasporedenih eventa."
         << std::endl;
@@ -480,7 +480,7 @@ bool TabuSearch::solve(int maxIterations){
 
     if (unplacedEvents.empty()){
         std::cout
-            << "Pronaden feasible raspored nakon "
+            << "Pronaden dopustiv raspored nakon "
             << currentIteration
             << " iteracija."
             << std::endl;
@@ -506,7 +506,7 @@ bool TabuSearch::solve(int maxIterations){
     bestCost = locallyBestCost;
 
     std::cout
-        << "Tabu Search nije pronasao feasible raspored unutar "
+        << "Tabu pretrazivanje nije pronaslo dopustiv raspored unutar "
         << maxIterations
         << " iteracija."
         << std::endl;
@@ -514,7 +514,7 @@ bool TabuSearch::solve(int maxIterations){
     std::cout
         << "Najbolji raspored ima "
         << locallyBestCost
-        << " nerasporedenih eventa."
+        << " nerasporedenih predmeta."
         << std::endl;
 
 

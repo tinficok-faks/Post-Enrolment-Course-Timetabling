@@ -6,9 +6,9 @@
 #include <utility>
 
 EventData readfiles(std::string datasetNumber) {
-	std::ifstream file("../file_readings/data.txt");
+	std::ifstream file("../file_readings/data.sln");
 	if (!file) {
-		throw std::runtime_error("Ne mogu otvoriti datoteku data.txt");
+		throw std::runtime_error("Ne mogu otvoriti datoteku data.sln");
 	}
 
 	std::vector<std::vector<std::vector<int>>> objects;
@@ -64,7 +64,7 @@ EventData readfiles(std::string datasetNumber) {
 		|| objects[0].size() != 1
 		|| objects[0][0].size() != 1) {
 		throw std::runtime_error(
-			"data.txt mora poceti brojem studenata S u zasebnom bloku");
+			"data.sln mora poceti brojem studenata S u zasebnom bloku");
 	}
 
 	EventData data;
@@ -85,9 +85,9 @@ EventData readfiles(std::string datasetNumber) {
 
 
 	data.placedEvents.assign(45, std::vector<int>(data.roomSizes.size(), -1));
-	std::ifstream timetableFile("../outputs/raspored_dataset" + datasetNumber + "_greedy.txt");
+	std::ifstream timetableFile("../greedy_outputs/raspored_dataset" + datasetNumber + "_greedy.sln");
 	if (!timetableFile) {
-		throw std::runtime_error("Ne mogu otvoriti datoteku raspored_greedy.txt");
+		throw std::runtime_error("Ne mogu otvoriti datoteku raspored_greedy.sln");
 	}
 
 	int event = 0;
@@ -124,4 +124,72 @@ EventData readfiles(std::string datasetNumber) {
 	}
 
 	return data;
+}
+
+void loadInputSolution(const std::string& filename, EventData& data){
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        throw std::runtime_error(
+            "Nije moguce otvoriti pocetno rjesenje: " + filename
+        );
+    }
+
+    // resetiraj raspored
+    for (auto& timeslot : data.placedEvents) {
+        std::fill(timeslot.begin(), timeslot.end(), -1);
+    }
+
+    data.unplacedEvents.clear();
+
+    int numberOfEvents = static_cast<int>(data.studentsOfEvent.size());
+
+    for (int event = 0; event < numberOfEvents; ++event) {
+
+        int timeslot;
+        int room;
+
+        if (!(file >> timeslot >> room)) {
+            throw std::runtime_error(
+                "Nedostaje zapis za event " +
+                std::to_string(event) +
+                " u " + filename
+            );
+        }
+
+        // nerasporeden event
+        if (timeslot == -1 && room == -1) {
+            data.unplacedEvents.push_back(event);
+            continue;
+        }
+
+        // provjera timeslota
+        if (timeslot < 0 
+			|| timeslot >= static_cast<int>(data.placedEvents.size())
+        ) {
+            throw std::runtime_error(
+                "Neispravan timeslot za event " +
+                std::to_string(event)
+            );
+        }
+
+        // provjera sobe
+        if (room < 0 
+			|| room >= static_cast<int>(data.placedEvents[timeslot].size())
+        ) {
+            throw std::runtime_error(
+                "Neispravna soba za event " +
+                std::to_string(event)
+            );
+        }
+
+        if (data.placedEvents[timeslot][room] != -1) {
+            throw std::runtime_error(
+                "Dvije aktivnosti koriste istu sobu u timeslotu " +
+                std::to_string(timeslot)
+            );
+        }
+
+        data.placedEvents[timeslot][room] = event;
+    }
 }

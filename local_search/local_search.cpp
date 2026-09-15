@@ -44,6 +44,19 @@ int getCostChange(int event, int oldts, int newts,
     const std::vector<std::vector<int>>& studentsOfEvent,
     std::vector<std::vector<int>>& studentSchedule
 ){
+    if (oldts < 0) {
+        int after = 0;
+        int newDay = newts / 9;
+
+        for (int student : studentsOfEvent[event]) {
+            studentSchedule[student][newts] = 1;
+            after += dailyPenalty(student, newDay, studentSchedule);
+            studentSchedule[student][newts] = 0;
+        }
+
+        return after;
+    }
+
     int oldDay = oldts / 9;
     int newDay = newts / 9;
 
@@ -207,7 +220,6 @@ void findBestTransfer(
                 bestMove.event = event;
                 bestMove.timeslot = timeslot;
                 bestMove.room = room;
-                bestMove.method = 't';
             }
         }
     }
@@ -222,6 +234,10 @@ int getSwapCostChange(
     const std::vector<std::vector<int>>& studentsOfEvent,
     std::vector<std::vector<int>>& studentSchedule
 ) {
+    if (timeslot1 < 0 || timeslot2 < 0) {
+        return 0;
+    }
+
     const int numberOfStudents = S;
 
     const int day1 = timeslot1 / 9;
@@ -327,7 +343,7 @@ void findBestSwap(
 
             int room2 = schedule.currentRoom[event2];
 
-            if (timeslot2 == -1 || room2 == -1)
+            if (timeslot1 == -1 || timeslot2 == -1 || room2 == -1)
                 continue;
 
 
@@ -520,7 +536,6 @@ void findBestSwap(
                 bestMove.timeslot = timeslot2;
                 bestMove.room = newRoom1;
                 bestMove.room2 = newRoom2;
-                bestMove.method = 's';
             }
         }
     }
@@ -536,6 +551,13 @@ void applyMove(
     const int oldRoom = schedule.currentRoom[move.event];
 
     if (oldTimeslot < 0 || oldRoom < 0) {
+        schedule.placedEvents[move.timeslot][move.room] = move.event;
+        schedule.currentTimeslot[move.event] = move.timeslot;
+        schedule.currentRoom[move.event] = move.room;
+
+        for (int student : schedule.studentsOfEvent[move.event]) {
+            studentSchedule[student][move.timeslot] = 1;
+        }
         return;
     }
 
@@ -627,16 +649,9 @@ void applySwap(
     }
 }
 
-void best_improving_neighbor(TabuSearch& schedule){
+void best_improving_neighbor_transfer(TabuSearch& schedule){
 
     schedule.initializePositions();
-
-    for (int event = 0; event < schedule.numberOfEvents; ++event) {
-        if (schedule.currentTimeslot[event] == -1) {
-            std::cerr << "Local Search zahtijeva feasible raspored.\n";
-            return;
-        }
-    }
     
     std::vector<std::vector<int>> StudentSchedule = 
         buildStudentSchedule(schedule.S, schedule.placedEvents, schedule.studentsOfEvent);
@@ -646,18 +661,366 @@ void best_improving_neighbor(TabuSearch& schedule){
         int bestDelta = 0;
 
         findBestTransfer(schedule, bestMove, bestDelta, StudentSchedule);
+
+        if (bestDelta >= 0)
+            break;
+
+        applyMove(schedule, bestMove, StudentSchedule);
+    }
+
+}
+
+void best_improving_neighbor_swap(TabuSearch& schedule){
+
+    schedule.initializePositions();
+    
+    std::vector<std::vector<int>> StudentSchedule = 
+        buildStudentSchedule(schedule.S, schedule.placedEvents, schedule.studentsOfEvent);
+    while (true) {
+
+        Move bestMove;
+        int bestDelta = 0;
         
         findBestSwap(schedule, bestMove, bestDelta, StudentSchedule);
 
         if (bestDelta >= 0)
             break;
 
-        if (bestMove.method == 't')
-            applyMove(schedule, bestMove, StudentSchedule);
-        else if(bestMove.method == 's')
-            applySwap(schedule, bestMove,StudentSchedule);
+        applySwap(schedule, bestMove,StudentSchedule);
     }
 
 }
 
+
+// gleda se samo prvi poboljsavajuci susjed
+// pa su komentari izostavljeni; jedina
+// razlika je sto delta < bestDelta ima return;
+void findFirstTransfer(
+    TabuSearch& schedule, 
+    Move& bestMove,
+    int& bestDelta,
+    std::vector<std::vector<int>>& StudentSchedule
+){
+    for (int event = 0; event < schedule.numberOfEvents; ++event) {
+        const int oldTimeslot = schedule.currentTimeslot[event];
+
+        for (int timeslot = 0; timeslot < schedule.numberOfTimeslots; ++timeslot) {
+
+            if (oldTimeslot == timeslot)
+               continue;
+
+            if (schedule.eventTimeslot[event][timeslot] == 0)
+               continue;
+
+
+            bool conflict_exists = false;
+
+            for(int conflict : schedule.conflictList[event])
+               if(schedule.currentTimeslot[conflict] == timeslot){
+                   conflict_exists = true;
+                   break;
+               }
+            
+            if (conflict_exists)
+                 continue;
+
+
+            for (int otherEvent = 0; otherEvent < schedule.numberOfEvents; ++otherEvent){
+
+                if (otherEvent == event)
+                   continue;
+
+                if (schedule.currentTimeslot[otherEvent] == -1)
+                    continue;
+
+                if (schedule.precedence[otherEvent][event] == 1){
+                    if (schedule.currentTimeslot[otherEvent] >= timeslot){
+                        conflict_exists = true;
+                        break;
+                    }
+                }
+             
+                if (schedule.precedence[event][otherEvent] == 1){
+                    if (schedule.currentTimeslot[otherEvent] <= timeslot){
+                        conflict_exists = true;
+                        break;
+                    }
+                }
+             }
+             
+            if (conflict_exists)
+                    continue;
+             
+            int room = -1;         
+
+            for(int i = 0; i < schedule.numberOfRooms; ++i){
+                if(schedule.roomCompatible(event, i) 
+                   && schedule.placedEvents[timeslot][i] == -1){
+                    room = i;
+                    break;
+                }
+            }
+         
+            if (room == -1)
+                continue;
+
+         
+            int delta = getCostChange(event, 
+                                      oldTimeslot,
+                                      timeslot,
+                                      schedule.studentsOfEvent,
+                                      StudentSchedule);
+
+         
+            if (delta < bestDelta) {
+                bestDelta = delta;
+            
+                bestMove.event = event;
+                bestMove.timeslot = timeslot;
+                bestMove.room = room;
+
+                return;
+            }
+        }
+    }
+}
+
+// isto kao i u prosloj funkciji
+// razlika je sto delta < bestDelta ima return;
+void findFirstSwap(
+    TabuSearch& schedule,
+    Move& bestMove,
+    int& bestDelta,
+    std::vector<std::vector<int>>& studentSchedule
+) {
+    for (int event1 = 0; event1 < schedule.numberOfEvents; ++event1){
+
+        int timeslot1 = schedule.currentTimeslot[event1];
+
+        for (int event2 = event1 + 1;
+             event2 < schedule.numberOfEvents;
+             ++event2)
+        {
+            int timeslot2 = schedule.currentTimeslot[event2];
+
+            int room2 = schedule.currentRoom[event2];
+
+            if (timeslot1 == -1 || timeslot2 == -1)
+                continue;
+
+            if (room2 == -1)
+                continue;
+
+            if (timeslot1 == timeslot2)
+                continue;
+
+            if (schedule.eventTimeslot[event1][timeslot2] == 0)
+                continue;
+
+
+            if (schedule.eventTimeslot[event2][timeslot1] == 0)
+                continue;
+
+
+
+            int newRoom1 = -1;
+            int newRoom2 = -1;        
+
+
+            for(int i = 0; i < schedule.numberOfRooms; ++i){
+                int occupant = schedule.placedEvents[timeslot2][i];
+                if(schedule.roomCompatible(event1, i) 
+                   && (occupant == -1 || occupant == event2)){
+                    newRoom1 = i;
+                    break;
+                }
+            }
+
+            for(int i = 0; i < schedule.numberOfRooms; ++i){
+                int occupant = schedule.placedEvents[timeslot1][i];
+                if(schedule.roomCompatible(event2, i) 
+                   && (occupant == -1 || occupant == event1)){
+                    newRoom2 = i;
+                    break;
+                }
+            }
+
+            if (newRoom1 == -1 || newRoom2 == -1)
+                continue;
+
+
+            bool conflict_exists = false;
+
+
+            for (int conflict : schedule.conflictList[event1])
+            {
+
+                if (conflict == event2)
+                    continue;
+
+                if (schedule.currentTimeslot[conflict]
+                    == timeslot2)
+                {
+                    conflict_exists = true;
+                    break;
+                }
+            }
+
+            if (conflict_exists)
+                continue;
+
+
+            for (int conflict : schedule.conflictList[event2])
+            {
+  
+                if (conflict == event1)
+                    continue;
+
+                if (schedule.currentTimeslot[conflict] == timeslot1){
+                    conflict_exists = true;
+                    break;
+                }
+            }
+
+            if (conflict_exists)
+                continue;
+
+            auto projectedTimeslot =
+                [&](int event)
+                {
+                    if (event == event1)
+                        return timeslot2;
+
+                    if (event == event2)
+                        return timeslot1;
+
+                    return schedule.currentTimeslot[event];
+                };
+
+
+            for (int otherEvent = 0; otherEvent < schedule.numberOfEvents; ++otherEvent){
+
+                int otherTimeslot = projectedTimeslot(otherEvent);
+
+                if (otherTimeslot == -1)
+                    continue;
+
+
+                if (schedule.precedence[event1][otherEvent] == 1)
+                {
+                    if (projectedTimeslot(event1) >= otherTimeslot)
+                    {
+                        conflict_exists = true;
+                        break;
+                    }
+                }
+
+                if (schedule.precedence[otherEvent][event1] == 1)
+                {
+                    if (otherTimeslot >= projectedTimeslot(event1))
+                    {
+                        conflict_exists = true;
+                        break;
+                    }
+                }
+
+
+                if (schedule.precedence[event2][otherEvent] == 1)
+                {
+                    if (projectedTimeslot(event2) >= otherTimeslot)
+                    {
+                        conflict_exists = true;
+                        break;
+                    }
+                }
+
+                if (schedule.precedence[otherEvent][event2] == 1)
+                {
+                    if (otherTimeslot
+                        >= projectedTimeslot(event2))
+                    {
+                        conflict_exists = true;
+                        break;
+                    }
+                }
+            }
+
+
+            if (conflict_exists)
+                continue;
+
+
+
+
+            int delta =
+                getSwapCostChange(
+                    schedule.S,
+                    event1,
+                    event2,
+                    timeslot1,
+                    timeslot2,
+                    schedule.studentsOfEvent,
+                    studentSchedule
+                );
+
+
+
+            if (delta < bestDelta){
+                bestDelta = delta;
+
+                bestMove.event = event1;
+                bestMove.secondEvent = event2;
+
+                bestMove.timeslot = timeslot2;
+                bestMove.room = newRoom1;
+                bestMove.room2 = newRoom2;
+
+                return ;
+            }
+        }
+    }
+}
+
+
+
+void first_improving_neighbor_transfer(TabuSearch& schedule){
+
+    schedule.initializePositions();
+    
+    std::vector<std::vector<int>> StudentSchedule = 
+        buildStudentSchedule(schedule.S, schedule.placedEvents, schedule.studentsOfEvent);
+    while (true) {
+
+        Move bestMove;
+        int bestDelta = 0;
+
+        findFirstTransfer(schedule, bestMove, bestDelta, StudentSchedule);
+
+        if (bestDelta >= 0)
+            break;
+
+        applyMove(schedule, bestMove, StudentSchedule);
+    }
  
+}
+
+void first_improving_neighbor_swap(TabuSearch& schedule){
+
+    schedule.initializePositions();
+    
+    std::vector<std::vector<int>> StudentSchedule = 
+        buildStudentSchedule(schedule.S, schedule.placedEvents, schedule.studentsOfEvent);
+    while (true) {
+
+        Move bestMove;
+        int bestDelta = 0;
+
+        findFirstSwap(schedule, bestMove, bestDelta, StudentSchedule);
+        
+        if (bestDelta >= 0)
+            break;
+
+        applySwap(schedule, bestMove,StudentSchedule);
+    }
+ 
+}

@@ -66,7 +66,7 @@ void printContainer(std::ofstream& output, const T& container) {
 }
 
 void writeEventsdata(const TimData& data, const Graph& graph){
-    const std::string filename = "../file_readings/data.txt";
+    const std::string filename = "../file_readings/data.sln";
     createParentFolder(filename);
     std::ofstream output(filename);
     if (!output) {
