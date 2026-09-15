@@ -19,4 +19,6 @@ struct EventData {
 
 EventData readfiles(std::string datasetNumber);
 
+void loadInputSolution(const std::string& filename, EventData& data);
+
 #endif

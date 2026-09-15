@@ -6,4 +6,6 @@
 
 void best_improving_neighbor(TabuSearch& schedule);
 
+void first_improving_neighbor(TabuSearch& schedule);
+
 #endif

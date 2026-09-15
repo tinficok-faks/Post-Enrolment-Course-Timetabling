@@ -58,7 +58,7 @@ Evaluation solveDataset(int datasetNumber, bool printTimetable) {
     }
     else{
         writeReadableTimetableFile(
-            "../outputs/raspored_" + instanceName + "_greedy.txt",
+            "../greedy_outputs/raspored_" + instanceName + "_greedy.txt",
             data,
             schedule
             );
