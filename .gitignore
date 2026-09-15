@@ -1,4 +1,5 @@
 *.exe
+!check.exe
 
 linkovi.txt
 zavrsni_projekt.txt

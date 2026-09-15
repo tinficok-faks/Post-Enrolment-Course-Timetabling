@@ -84,6 +84,15 @@ class App(ctk.CTk):
         )
         self.dataset_button.grid(row=0, column=0, padx=(18, 12), pady=16)
 
+        self.clean_button = ctk.CTkButton(
+            section,
+            text="Očisti datoteke",
+            width=180,
+            height=40,
+            command=self.start_clean
+        )
+        self.clean_button.grid(row=1, column=0, padx=(18, 12), pady=(0, 16))
+
         self.dataset_label = ctk.CTkLabel(
             section,
             text="Dataset nije odabran",
@@ -111,7 +120,7 @@ class App(ctk.CTk):
 
         self.local_search_1_button = ctk.CTkButton(
             section,
-            text="Local Search 1",
+            text="Najbolji poboljšavajući susjed",
             height=44,
             command=self.start_local_search_1
         )
@@ -121,7 +130,7 @@ class App(ctk.CTk):
 
         self.local_search_2_button = ctk.CTkButton(
             section,
-            text="Local Search 2",
+            text="Prvi poboljšavajući susjed",
             height=44,
             command=self.start_local_search_2
         )
@@ -496,6 +505,40 @@ class App(ctk.CTk):
             daemon=True
         ).start()
 
+    def start_clean(self):
+        if self.is_running:
+            return
+
+        self.set_running_state(True)
+        self.status_label.configure(text="Brisanje generiranih datoteka...")
+
+        threading.Thread(
+            target=self.clean_worker,
+            daemon=True
+        ).start()
+
+    def clean_worker(self):
+        try:
+            removed_files = self.clean_generated_files()
+            self.after(
+                0,
+                self.clean_finished,
+                removed_files
+            )
+        except Exception as error:
+            self.after(0, self.algorithm_failed, "Brisanje", str(error))
+
+    def clean_finished(self, removed_files):
+        self.set_running_state(False)
+        self.clear_results(
+            message="Generirane datoteke su očišćene."
+        )
+        self.status_label.configure(
+            text=(
+                f"Brisanje završeno. Uklonjeno datoteka: {removed_files}."
+            )
+        )
+
     def local_search_2_worker(self):
         try:
             self.after(
@@ -582,6 +625,39 @@ class App(ctk.CTk):
             encoding="utf-8",
             errors="replace"
         )
+
+    def clean_generated_files(self):
+        make_command = self.find_make_command()
+        clean_directories = {GREEDY_DIR, LOCAL_SEARCH_DIR}
+
+        for project_dir in clean_directories:
+            clean_result = subprocess.run(
+                [make_command, "clean"],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace"
+            )
+
+            if clean_result.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        f"Čišćenje foldera {project_dir.name} nije uspjelo",
+                        clean_result
+                    )
+                )
+
+        removed_files = 0
+        for file_path in BASE_DIR.rglob("*"):
+            if ".git" in file_path.parts:
+                continue
+
+            if file_path.is_file() and file_path.suffix.lower() in {".sln", ".txt"}:
+                file_path.unlink()
+                removed_files += 1
+
+        return removed_files
 
     def run_executable(self, project_dir, dataset_number, method_number=None):
         executable = self.find_executable(project_dir)
@@ -936,6 +1012,7 @@ class App(ctk.CTk):
         self.greedy_button.configure(state=state)
         self.local_search_1_button.configure(state=state)
         self.local_search_2_button.configure(state=state)
+        self.clean_button.configure(state=state)
 
 
 if __name__ == "__main__":
