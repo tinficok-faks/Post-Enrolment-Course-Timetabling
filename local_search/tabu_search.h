@@ -16,7 +16,6 @@ struct Move {
     }
     int secondEvent = -1;
     int room2 = -1;
-    char method = ' ';
 };
 
 

@@ -6,9 +6,9 @@
 #include <utility>
 
 EventData readfiles(std::string datasetNumber) {
-	std::ifstream file("../file_readings/data.txt");
+	std::ifstream file("../file_readings/data.sln");
 	if (!file) {
-		throw std::runtime_error("Ne mogu otvoriti datoteku data.txt");
+		throw std::runtime_error("Ne mogu otvoriti datoteku data.sln");
 	}
 
 	std::vector<std::vector<std::vector<int>>> objects;
@@ -64,7 +64,7 @@ EventData readfiles(std::string datasetNumber) {
 		|| objects[0].size() != 1
 		|| objects[0][0].size() != 1) {
 		throw std::runtime_error(
-			"data.txt mora poceti brojem studenata S u zasebnom bloku");
+			"data.sln mora poceti brojem studenata S u zasebnom bloku");
 	}
 
 	EventData data;
@@ -85,9 +85,9 @@ EventData readfiles(std::string datasetNumber) {
 
 
 	data.placedEvents.assign(45, std::vector<int>(data.roomSizes.size(), -1));
-	std::ifstream timetableFile("../greedy_outputs/raspored_dataset" + datasetNumber + "_greedy.txt");
+	std::ifstream timetableFile("../greedy_outputs/raspored_dataset" + datasetNumber + "_greedy.sln");
 	if (!timetableFile) {
-		throw std::runtime_error("Ne mogu otvoriti datoteku raspored_greedy.txt");
+		throw std::runtime_error("Ne mogu otvoriti datoteku raspored_greedy.sln");
 	}
 
 	int event = 0;

@@ -5,6 +5,7 @@ zavrsni_projekt.txt
 
 *.o
 *.obj
+*.sln
 
 .vscode/
 .vs/

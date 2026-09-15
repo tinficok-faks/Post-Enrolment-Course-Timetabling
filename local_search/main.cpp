@@ -42,7 +42,7 @@ int main(){
         std::cout << "Izaberi dataset izmedu 1 i 24: ";
         std::cin >> datasetNumber;
 
-        std::cout << "Izaberi BIN (1), FIN (2) ili -1 ako zelite Tabu Search rjesenje: ";
+        std::cout << "Izaberi BIN Transfer (1), FIN Transfer (2), BIN Swap (3), FIN Swap (4) ili -1 ako zelite Tabu Search rjesenje: ";
         std::cin >> methodNumber;
     
         if (datasetNumber < 1 || datasetNumber > 24)
@@ -53,8 +53,8 @@ int main(){
             return 0;
         }
 
-        if (methodNumber != 1 && methodNumber != 2) {
-            throw std::invalid_argument("Broj metode mora biti 1 ili 2.");
+        if ( methodNumber < 1 || methodNumber > 4) {
+            throw std::invalid_argument("Broj metode mora biti 1, 2, 3 ili 4.");
         }
     
         EventData data = readfiles(std::to_string(datasetNumber));
@@ -77,26 +77,46 @@ int main(){
 
         if (methodNumber == 1) {
 
-            best_improving_neighbor(schedule);
+            best_improving_neighbor_transfer(schedule);
 
             writeSolution(
-                "../ls_outputs/ls1_outputs/ls1_output" + std::to_string(datasetNumber)     + ".sln",
+                "../ls_outputs/ls1_outputs/ls1_output" + std::to_string(datasetNumber) + ".sln",
+                schedule.numberOfEvents,
+                schedule.placedEvents,
+                datasetNumber
+            );
+        }
+        else if (methodNumber == 2){
+
+            first_improving_neighbor_transfer(schedule);
+
+            writeSolution(
+                "../ls_outputs/ls2_outputs/ls2_output" + std::to_string(datasetNumber) + ".sln",
+                schedule.numberOfEvents,
+                schedule.placedEvents,
+                datasetNumber
+            );
+
+        }
+        else if (methodNumber == 3){
+            best_improving_neighbor_swap(schedule);
+
+            writeSolution(
+                "../ls_outputs/ls1_outputs/ls1_output" + std::to_string(datasetNumber) + ".sln",
                 schedule.numberOfEvents,
                 schedule.placedEvents,
                 datasetNumber
             );
         }
         else{
-
-            first_improving_neighbor(schedule);
+            first_improving_neighbor_swap(schedule);
 
             writeSolution(
-                "../ls_outputs/ls2_outputs/ls2_output" + std::to_string(datasetNumber)     + ".sln",
+                "../ls_outputs/ls2_outputs/ls2_output" + std::to_string(datasetNumber) + ".sln",
                 schedule.numberOfEvents,
                 schedule.placedEvents,
                 datasetNumber
             );
-
         }
 
 

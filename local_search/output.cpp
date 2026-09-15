@@ -90,11 +90,4 @@ void writeSolution(
             throw std::runtime_error(
                 "Ne mogu pronaci dataset za instanceName " + instanceName);
         }
-
-        const std::filesystem::path outputDirectory = "../ls1_outputs";
-        std::filesystem::create_directories(outputDirectory);
-        const std::filesystem::path outputTimetable =
-            outputDirectory / ("ts_output" + instanceName + ".tim");
-        std::filesystem::remove(outputTimetable);
-        std::filesystem::copy_file(sourceTimetable, outputTimetable);
 }

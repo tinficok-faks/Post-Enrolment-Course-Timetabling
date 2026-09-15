@@ -11,7 +11,6 @@ BASE_DIR = Path(__file__).resolve().parent
 
 DATASETS_DIR = BASE_DIR / "datasets"
 GREEDY_DIR = BASE_DIR / "greedy"
-TABU_SEARCH_DIR = BASE_DIR / "local_search"
 LOCAL_SEARCH_DIR = BASE_DIR / "local_search"
 
 GREEDY_OUTPUT_DIR = BASE_DIR / "greedy_outputs"
@@ -59,7 +58,7 @@ class App(ctk.CTk):
 
         title = ctk.CTkLabel(
             header,
-            text="Post-Enrolment Course Timetabling",
+            text="Određivanje rasporeda na sveučilištima",
             font=ctk.CTkFont(size=28, weight="bold")
         )
         title.grid(row=0, column=0, padx=30, pady=(24, 24))
@@ -77,7 +76,7 @@ class App(ctk.CTk):
 
         self.dataset_button = ctk.CTkButton(
             section,
-            text="Odaberi dataset",
+            text="Odaberi skup podataka",
             width=180,
             height=40,
             command=self.select_dataset
@@ -86,7 +85,7 @@ class App(ctk.CTk):
 
         self.clean_button = ctk.CTkButton(
             section,
-            text="Očisti datoteke",
+            text="Obriši generirane datoteke",
             width=180,
             height=40,
             command=self.start_clean
@@ -95,7 +94,7 @@ class App(ctk.CTk):
 
         self.dataset_label = ctk.CTkLabel(
             section,
-            text="Dataset nije odabran",
+            text="Skup podataka nije odabran",
             anchor="w",
             font=ctk.CTkFont(size=14)
         )
@@ -110,7 +109,7 @@ class App(ctk.CTk):
 
         self.greedy_button = ctk.CTkButton(
             section,
-            text="Greedy",
+            text="Pohlepna metoda",
             height=44,
             command=self.start_greedy
         )
@@ -120,7 +119,7 @@ class App(ctk.CTk):
 
         self.local_search_1_button = ctk.CTkButton(
             section,
-            text="Najbolji poboljšavajući susjed",
+            text="Najbolji poboljšavajući susjed (susjedstvo prijenosa)",
             height=44,
             command=self.start_local_search_1
         )
@@ -130,7 +129,7 @@ class App(ctk.CTk):
 
         self.local_search_2_button = ctk.CTkButton(
             section,
-            text="Prvi poboljšavajući susjed",
+            text="Prvi poboljšavajući susjed (susjedstvo prijenosa)",
             height=44,
             command=self.start_local_search_2
         )
@@ -138,13 +137,33 @@ class App(ctk.CTk):
             row=0, column=2, padx=(8, 18), pady=(16, 8), sticky="ew"
         )
 
+        self.local_search_3_button = ctk.CTkButton(
+            section,
+            text="Najbolji poboljšavajući susjed (susjedstvo zamjene)",
+            height=40,
+            command=self.start_local_search_3
+        )
+        self.local_search_3_button.grid(
+            row=1, column=1, padx=8, pady=(0, 8), sticky="ew"
+        )
+
+        self.local_search_4_button = ctk.CTkButton(
+            section,
+            text="Prvi poboljšavajući susjed (susjedstvo zamjene)",
+            height=40,
+            command=self.start_local_search_4
+        )
+        self.local_search_4_button.grid(
+            row=1, column=2, padx=(8, 18), pady=(0, 8), sticky="ew"
+        )
+
         self.status_label = ctk.CTkLabel(
             section,
-            text="Odaberi dataset za početak.",
+            text="Odaberi skup podataka za početak.",
             anchor="w"
         )
         self.status_label.grid(
-            row=1, column=0, columnspan=3,
+            row=2, column=0, columnspan=3,
             padx=18, pady=(4, 14), sticky="ew"
         )
 
@@ -214,7 +233,7 @@ class App(ctk.CTk):
     # dataset
     def select_dataset(self):
         file_path = filedialog.askopenfilename(
-            title="Odaberi dataset",
+            title="Odaberi skup podataka",
             initialdir=DATASETS_DIR,
             filetypes=[
                 ("TIM files", "*.tim"),
@@ -231,7 +250,7 @@ class App(ctk.CTk):
 
         if not match:
             messagebox.showerror(
-                "Neispravan naziv dataseta",
+                "Neispravan naziv datoteke",
                 "Trenutni C++ kod očekuje datoteke naziva dataset1.tim, "
                 "dataset2.tim, ..., dataset24.tim."
             )
@@ -241,7 +260,7 @@ class App(ctk.CTk):
 
         if not 1 <= dataset_number <= 24:
             messagebox.showerror(
-                "Neispravan dataset",
+                "Neispravan skup podataka",
                 "Broj dataseta mora biti između 1 i 24."
             )
             return
@@ -255,10 +274,13 @@ class App(ctk.CTk):
         self.status_label.configure(
             text=f"Spremno za pokretanje algoritma nad {dataset.name}."
         )
+        self.results_title.configure(text="Raspored")
 
         self.clear_results(
-            message="Odaberi Greedy, Local Search 1 ili 2 za prikaz rasporeda."
+            message="Odaberi jednu od ponuđenih metoda za prikaz rasporeda."
         )
+
+        subprocess.run(["g++", "check.cpp", "-o", "check.exe"], capture_output=True, text=True)
 
     
     # pokretanje algoritama
@@ -271,7 +293,7 @@ class App(ctk.CTk):
 
         self.set_running_state(True)
         self.status_label.configure(
-            text=f"Greedy: build i pokretanje za dataset{self.selected_dataset_number}..."
+            text=f"Pohlepna metoda: izgrađivanje i pokretanje za skup podataka dataset{self.selected_dataset_number}..."
         )
 
         threading.Thread(
@@ -285,7 +307,17 @@ class App(ctk.CTk):
 
             if build_result.returncode != 0:
                 raise RuntimeError(
-                    self.format_process_error("Greedy build nije uspio", build_result)
+                    self.format_process_error("Izgradnja pohlepne metode nije uspjela!", build_result)
+                )
+
+            build_result = self.build_project(LOCAL_SEARCH_DIR)
+            
+            if build_result.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        "Izgradnja metode lokalnog pretraživanja nije uspjela",
+                        build_result
+                    )
                 )
 
             run_result = self.run_executable(
@@ -295,23 +327,23 @@ class App(ctk.CTk):
 
             if run_result.returncode != 0:
                 raise RuntimeError(
-                    self.format_process_error("Greedy nije uspješno izvršen", run_result)
+                    self.format_process_error("Pohlepna metoda nije uspješno izvršena!", run_result)
                 )
 
             output_file = (
                 GREEDY_OUTPUT_DIR
-                / f"raspored_dataset{self.selected_dataset_number}_greedy.txt"
+                / f"raspored_dataset{self.selected_dataset_number}_greedy.sln"
             )
 
             self.after(
                 0,
                 self.algorithm_finished,
-                "Greedy",
+                "Pohlepna metoda",
                 output_file
             )
 
         except Exception as error:
-            self.after(0, self.algorithm_failed, "Greedy", str(error))
+            self.after(0, self.algorithm_failed, "Pohlepna metoda", str(error))
 
 
     # tabu search 
@@ -331,11 +363,12 @@ class App(ctk.CTk):
 
         # greedy rjesenje
         build_result = self.build_project(GREEDY_DIR)
+        
 
         if build_result.returncode != 0:
             raise RuntimeError(
                 self.format_process_error(
-                    "Greedy build nije uspio",
+                    "Izgradnja pohlepne metode nije uspjela",
                     build_result
                 )
             )
@@ -348,7 +381,7 @@ class App(ctk.CTk):
         if greedy_run.returncode != 0:
             raise RuntimeError(
                 self.format_process_error(
-                    "Greedy nije uspjesno izvrsen",
+                    "Pohlepna metoda nije uspješno izvršena",
                     greedy_run
                 )
             )
@@ -360,25 +393,14 @@ class App(ctk.CTk):
             self.status_label.configure,
             {
                 "text": (
-                    f"Priprema zajednickog Tabu Search rjesenja za "
+                    f"Priprema zajedničkog rješenja tabu pretraživanja za "
                     f"dataset{dataset_number}..."
                 )
             }
         )
 
-        tabu_build = self.build_project(TABU_SEARCH_DIR)
-
-        if tabu_build.returncode != 0:
-            raise RuntimeError(
-                self.format_process_error(
-                    "Tabu Search build nije uspio",
-                    tabu_build
-                )
-            )
-
-
         tabu_run = self.run_executable(
-            TABU_SEARCH_DIR,
+            LOCAL_SEARCH_DIR,
             dataset_number,
             -1
         )
@@ -386,14 +408,14 @@ class App(ctk.CTk):
         if tabu_run.returncode != 0:
             raise RuntimeError(
                 self.format_process_error(
-                    "Tabu Search nije uspjesno izvrsen",
+                    "Tabu pretraživanje nije uspješno izvršeno",
                     tabu_run
                 )
             )
 
         if not tabu_output.exists():
             raise FileNotFoundError(
-                f"Tabu Search nije proizveo:\n{tabu_output}"
+                f"Tabu pretraživanje nije proizvelo:\n{tabu_output}"
             )
 
         self.tabu_ready_for_dataset = dataset_number
@@ -410,7 +432,7 @@ class App(ctk.CTk):
         self.set_running_state(True)
         self.status_label.configure(
             text=(
-                f"Local Search 1: priprema Greedy rasporeda za "
+                f"Najbolji poboljšavajući susjed (susjedstvo prijenosa): priprema rasporeda pohlepnom metodom za skup podataka "
                 f"dataset{self.selected_dataset_number}..."
             )
         )
@@ -427,7 +449,7 @@ class App(ctk.CTk):
                 self.status_label.configure,
                 {
                     "text": (
-                        f"Priprema Tabu Search rjesenja "
+                        f"Priprema rješenja tabu pretraživanjem za "
                         f"dataset{self.selected_dataset_number}..."
                     )
                 }
@@ -440,7 +462,7 @@ class App(ctk.CTk):
                 self.status_label.configure,
                 {
                     "text": (
-                        f"Local Search 1: build i optimizacija "
+                        f"Najbolji poboljšavajući susjed (susjedstvo prijenosa): izgradnja i optimizacija "
                         f"dataset{self.selected_dataset_number}..."
                     )
                 }
@@ -451,7 +473,7 @@ class App(ctk.CTk):
             if ls1_build.returncode != 0:
                 raise RuntimeError(
                     self.format_process_error(
-                        "Local Search 1 build nije uspio",
+                        "Izgradnja najboljeg poboljšavajućeg susjeda (susjedstvo prijenosa) nije uspjela",
                         ls1_build
                     )
                 )
@@ -465,7 +487,7 @@ class App(ctk.CTk):
             if ls1_run.returncode != 0:
                 raise RuntimeError(
                     self.format_process_error(
-                        "Local Search 1 nije uspješno izvršen",
+                        "Metoda najboljeg poboljšavajućeg susjeda (susjedstvo prijenosa) nije uspješno izvršena",
                         ls1_run
                     )
                 )
@@ -478,12 +500,12 @@ class App(ctk.CTk):
             self.after(
                 0,
                 self.algorithm_finished,
-                "Local Search 1",
+                "Najbolji poboljšavajući susjed (susjedstvo prijenosa)",
                 output_file
             )
 
         except Exception as error:
-            self.after(0, self.algorithm_failed, "Local Search 1", str(error))
+            self.after(0, self.algorithm_failed, "Najbolji poboljšavajući susjed (susjedstvo prijenosa)", str(error))
 
     def start_local_search_2(self):
         if not self.ensure_dataset_selected():
@@ -495,13 +517,53 @@ class App(ctk.CTk):
         self.set_running_state(True)
         self.status_label.configure(
             text=(
-                f"Local Search 2: priprema Greedy rasporeda za "
+                f"Prvi poboljšavajući susjed (susjedstvo prijenosa): priprema rasporeda pohlepnom metodom za skup podataka "
                 f"dataset{self.selected_dataset_number}..."
             )
         )
 
         threading.Thread(
             target=self.local_search_2_worker,
+            daemon=True
+        ).start()
+
+    def start_local_search_3(self):
+        if not self.ensure_dataset_selected():
+            return
+
+        if self.is_running:
+            return
+
+        self.set_running_state(True)
+        self.status_label.configure(
+            text=(
+                f"Najbolji poboljšavajući susjed (susjedstvo zamjene): priprema rasporeda pohlepnom metodom za skup podataka "
+                f"dataset{self.selected_dataset_number}..."
+            )
+        )
+
+        threading.Thread(
+            target=self.local_search_3_worker,
+            daemon=True
+        ).start()
+
+    def start_local_search_4(self):
+        if not self.ensure_dataset_selected():
+            return
+
+        if self.is_running:
+            return
+
+        self.set_running_state(True)
+        self.status_label.configure(
+            text=(
+                f"Prvi poboljšavajući susjed (susjedstvo zamjene): priprema rasporeda pohlepnom metodom za skup podataka "
+                f"dataset{self.selected_dataset_number}..."
+            )
+        )
+
+        threading.Thread(
+            target=self.local_search_4_worker,
             daemon=True
         ).start()
 
@@ -530,12 +592,13 @@ class App(ctk.CTk):
 
     def clean_finished(self, removed_files):
         self.set_running_state(False)
+        self.results_title.configure(text="Raspored")
         self.clear_results(
-            message="Generirane datoteke su očišćene."
+            message="Odaberi jednu od ponuđenih metoda za prikaz rasporeda."
         )
         self.status_label.configure(
             text=(
-                f"Brisanje završeno. Uklonjeno datoteka: {removed_files}."
+                f"Brisanje završeno. Uklonjena je {removed_files} datoteka."
             )
         )
 
@@ -546,7 +609,7 @@ class App(ctk.CTk):
                 self.status_label.configure,
                 {
                     "text": (
-                        f"Priprema Tabu Search rjesenja "
+                        f"Priprema rješenja tabu pretraživanjem za "
                         f"dataset{self.selected_dataset_number}..."
                     )
                 }
@@ -557,7 +620,7 @@ class App(ctk.CTk):
             if ls2_build.returncode != 0:
                 raise RuntimeError(
                     self.format_process_error(
-                        "Local Search 2 build nije uspio",
+                        "Izgradnja prvog poboljšavajućeg susjeda (susjedstvo prijenosa) nije uspijela",
                         ls2_build
                     )
                 )
@@ -570,7 +633,7 @@ class App(ctk.CTk):
             if ls2_run.returncode != 0:
                 raise RuntimeError(
                     self.format_process_error(
-                        "Local Search 2 nije uspješno izvršen",
+                        "Metoda prvog poboljšavajućeg susjeda (susjedstvo prijenosa) nije uspješno izvršena",
                         ls2_run
                     )
                 )
@@ -583,20 +646,122 @@ class App(ctk.CTk):
             self.after(
                 0,
                 self.algorithm_finished,
-                "Local Search 2",
+                "Prvi poboljšavajući susjed (susjedstvo prijenosa)",
                 output_file
             )
     
         except Exception as error:
-            self.after(0, self.algorithm_failed, "Local Search 2", str(error))
+            self.after(0, self.algorithm_failed, "Prvi poboljšavajući susjed (susjedstvo prijenosa)", str(error))
 
+    def local_search_3_worker(self):
+        try:
+            self.after(
+                0,
+                self.status_label.configure,
+                {
+                    "text": (
+                        f"Priprema rješenja tabu pretraživanjem za "
+                        f"dataset{self.selected_dataset_number}..."
+                    )
+                }
+            )
+            tabu_output = self.prepare_tabu_baseline()
+    
+            ls3_build = self.build_project(LOCAL_SEARCH_DIR)
+            if ls3_build.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        "Izgradnja najboljeg poboljšavajućeg susjeda (susjedstvo zamjene) nije uspijela",
+                        ls3_build
+                    )
+                )
+    
+            ls3_run = self.run_executable(
+                LOCAL_SEARCH_DIR,
+                self.selected_dataset_number,
+                3
+            )
+            if ls3_run.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        "Metoda najboljeg poboljšavajućeg susjeda (susjedstvo zamjene) nije uspješno izvršena",
+                        ls3_run
+                    )
+                )
+    
+            output_file = (
+                LOCAL_SEARCH_1_OUTPUT_DIR
+                / f"ls1_output{self.selected_dataset_number}.sln"
+            )
+    
+            self.after(
+                0,
+                self.algorithm_finished,
+                "Najbolji poboljšavajući susjed (susjedstvo zamjene)",
+                output_file
+            )
+    
+        except Exception as error:
+            self.after(0, self.algorithm_failed, "Najbolji poboljšavajući susjed (susjedstvo zamjene)", str(error))
+
+    
+    def local_search_4_worker(self):
+        try:
+            self.after(
+                0,
+                self.status_label.configure,
+                {
+                    "text": (
+                        f"Priprema rješenja tabu pretraživanjem za "
+                        f"dataset{self.selected_dataset_number}..."
+                    )
+                }
+            )
+            tabu_output = self.prepare_tabu_baseline()
+    
+            ls4_build = self.build_project(LOCAL_SEARCH_DIR)
+            if ls4_build.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        "Izgradnja prvog poboljšavajućeg susjeda (susjedstvo zamjene) nije uspijela",
+                        ls4_build
+                    )
+                )
+    
+            ls4_run = self.run_executable(
+                LOCAL_SEARCH_DIR,
+                self.selected_dataset_number,
+                4
+            )
+            if ls4_run.returncode != 0:
+                raise RuntimeError(
+                    self.format_process_error(
+                        "Metoda prvog poboljšavajućeg susjeda (susjedstvo zamjene) nije uspješno izvršena",
+                        ls4_run
+                    )
+                )
+    
+            output_file = (
+                LOCAL_SEARCH_2_OUTPUT_DIR
+                / f"ls2_output{self.selected_dataset_number}.sln"
+            )
+    
+            self.after(
+                0,
+                self.algorithm_finished,
+                "Prvi poboljšavajući susjed (susjedstvo zamjene)",
+                output_file
+            )
+    
+        except Exception as error:
+            self.after(0, self.algorithm_failed, "Prvi poboljšavajući susjed (susjedstvo zamjene)", str(error))
     
     # Build / subprocess pomocne metode
     @staticmethod
     def check_schedule(dataset_file, output_file):
         if not CHECK_EXECUTABLE.exists():
             raise FileNotFoundError(
-                f"Checker nije pronađen: {CHECK_EXECUTABLE}"
+                f"Datoteka za provjeru nije pronađena: {CHECK_EXECUTABLE}"
             )
 
         return subprocess.run(
@@ -613,7 +778,7 @@ class App(ctk.CTk):
 
     def build_project(self, project_dir):
         if not project_dir.exists():
-            raise FileNotFoundError(f"Folder ne postoji: {project_dir}")
+            raise FileNotFoundError(f"Mapa ne postoji: {project_dir}")
 
         make_command = self.find_make_command()
 
@@ -643,7 +808,7 @@ class App(ctk.CTk):
             if clean_result.returncode != 0:
                 raise RuntimeError(
                     self.format_process_error(
-                        f"Čišćenje foldera {project_dir.name} nije uspjelo",
+                        f"Čišćenje mape {project_dir.name} nije uspjelo",
                         clean_result
                     )
                 )
@@ -653,7 +818,7 @@ class App(ctk.CTk):
             if ".git" in file_path.parts:
                 continue
 
-            if file_path.is_file() and file_path.suffix.lower() in {".sln", ".txt"}:
+            if file_path.is_file() and file_path.suffix.lower() in {".sln", ".exe"}:
                 file_path.unlink()
                 removed_files += 1
 
@@ -700,7 +865,7 @@ class App(ctk.CTk):
                 return candidate
 
         raise FileNotFoundError(
-            f"Nakon builda nije pronađen main.exe niti main u folderu: "
+            f"Nakon izgradnje nije pronađen main.exe niti main u mapi: "
             f"{project_dir}"
         )
 
@@ -752,7 +917,7 @@ class App(ctk.CTk):
                 )
             else:
                 self.check_label.configure(
-                    text="Raspored je dopustiv bez troška."
+                    text="Raspored je dopustiv bez troškova."
                 )
 
             self.status_label.configure(
@@ -826,12 +991,12 @@ class App(ctk.CTk):
 
                 if not 0 <= timeslot < NUMBER_OF_TIMESLOTS:
                     raise ValueError(
-                        f"Neispravan timeslot {timeslot} za event {event_number}."
+                        f"Neispravan termin {timeslot} za predmet {event_number}."
                     )
 
                 if room < 0:
                     raise ValueError(
-                        f"Neispravna učionica {room} za event {event_number}."
+                        f"Neispravna učionica {room} za predmet {event_number}."
                     )
 
                 schedule_by_room.setdefault(room, {})[timeslot] = event_number
@@ -854,7 +1019,7 @@ class App(ctk.CTk):
             values = file.read().split()
 
         if len(values) < 4:
-            raise ValueError("Dataset nema ispravno zaglavlje E R F S.")
+            raise ValueError("Skup podataka nema ispravno zaglavlje E R F S.")
 
         number_of_rooms = int(values[1])
 
@@ -862,7 +1027,7 @@ class App(ctk.CTk):
         last_capacity_index = first_capacity_index + number_of_rooms
 
         if len(values) < last_capacity_index:
-            raise ValueError("Dataset nema sve kapacitete učionica.")
+            raise ValueError("Skup podataka nema sve kapacitete učionica.")
 
         return [
             int(value)
@@ -880,15 +1045,21 @@ class App(ctk.CTk):
         )
 
         if len(unplaced_events) > 0:
-                self.unplaced_label.configure(
-                    text=(
-                        f"Neraspoređeni predmeti ({len(unplaced_events)}): "
-                        + ", ".join(
-                            f"E{event}"
-                            for event in unplaced_events
-                        )
-                    )
+            unplaced_items = [
+                f"E{event}"
+                for event in unplaced_events
+            ]
+            unplaced_rows = [
+                ", ".join(unplaced_items[index:index + 15])
+                for index in range(0, len(unplaced_items), 15)
+            ]
+
+            self.unplaced_label.configure(
+                text=(
+                    f"Neraspoređeni predmeti ({len(unplaced_events)}):\t"
+                    + "\n\t\t\t".join(unplaced_rows)
                 )
+            )
 
         for room_index in range(len(room_capacities)):
             row = room_index // ROOMS_PER_ROW
@@ -996,8 +1167,8 @@ class App(ctk.CTk):
     def ensure_dataset_selected(self):
         if self.selected_dataset is None:
             messagebox.showwarning(
-                "Dataset nije odabran",
-                "Prvo odaberi dataset."
+                "Skup podataka nije odabran",
+                "Prvo odaberi skup podataka."
             )
             return False
 
@@ -1012,6 +1183,8 @@ class App(ctk.CTk):
         self.greedy_button.configure(state=state)
         self.local_search_1_button.configure(state=state)
         self.local_search_2_button.configure(state=state)
+        self.local_search_3_button.configure(state=state)
+        self.local_search_4_button.configure(state=state)
         self.clean_button.configure(state=state)
 
 

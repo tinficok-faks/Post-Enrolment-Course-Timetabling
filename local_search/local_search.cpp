@@ -44,6 +44,19 @@ int getCostChange(int event, int oldts, int newts,
     const std::vector<std::vector<int>>& studentsOfEvent,
     std::vector<std::vector<int>>& studentSchedule
 ){
+    if (oldts < 0) {
+        int after = 0;
+        int newDay = newts / 9;
+
+        for (int student : studentsOfEvent[event]) {
+            studentSchedule[student][newts] = 1;
+            after += dailyPenalty(student, newDay, studentSchedule);
+            studentSchedule[student][newts] = 0;
+        }
+
+        return after;
+    }
+
     int oldDay = oldts / 9;
     int newDay = newts / 9;
 
@@ -207,7 +220,6 @@ void findBestTransfer(
                 bestMove.event = event;
                 bestMove.timeslot = timeslot;
                 bestMove.room = room;
-                bestMove.method = 't';
             }
         }
     }
@@ -222,6 +234,10 @@ int getSwapCostChange(
     const std::vector<std::vector<int>>& studentsOfEvent,
     std::vector<std::vector<int>>& studentSchedule
 ) {
+    if (timeslot1 < 0 || timeslot2 < 0) {
+        return 0;
+    }
+
     const int numberOfStudents = S;
 
     const int day1 = timeslot1 / 9;
@@ -327,7 +343,7 @@ void findBestSwap(
 
             int room2 = schedule.currentRoom[event2];
 
-            if (timeslot2 == -1 || room2 == -1)
+            if (timeslot1 == -1 || timeslot2 == -1 || room2 == -1)
                 continue;
 
 
@@ -520,7 +536,6 @@ void findBestSwap(
                 bestMove.timeslot = timeslot2;
                 bestMove.room = newRoom1;
                 bestMove.room2 = newRoom2;
-                bestMove.method = 's';
             }
         }
     }
@@ -536,6 +551,13 @@ void applyMove(
     const int oldRoom = schedule.currentRoom[move.event];
 
     if (oldTimeslot < 0 || oldRoom < 0) {
+        schedule.placedEvents[move.timeslot][move.room] = move.event;
+        schedule.currentTimeslot[move.event] = move.timeslot;
+        schedule.currentRoom[move.event] = move.room;
+
+        for (int student : schedule.studentsOfEvent[move.event]) {
+            studentSchedule[student][move.timeslot] = 1;
+        }
         return;
     }
 
@@ -627,16 +649,9 @@ void applySwap(
     }
 }
 
-void best_improving_neighbor(TabuSearch& schedule){
+void best_improving_neighbor_transfer(TabuSearch& schedule){
 
     schedule.initializePositions();
-
-    for (int event = 0; event < schedule.numberOfEvents; ++event) {
-        if (schedule.currentTimeslot[event] == -1) {
-            std::cerr << "Local Search zahtijeva feasible raspored.\n";
-            return;
-        }
-    }
     
     std::vector<std::vector<int>> StudentSchedule = 
         buildStudentSchedule(schedule.S, schedule.placedEvents, schedule.studentsOfEvent);
@@ -646,19 +661,36 @@ void best_improving_neighbor(TabuSearch& schedule){
         int bestDelta = 0;
 
         findBestTransfer(schedule, bestMove, bestDelta, StudentSchedule);
+
+        if (bestDelta >= 0)
+            break;
+
+        applyMove(schedule, bestMove, StudentSchedule);
+    }
+
+}
+
+void best_improving_neighbor_swap(TabuSearch& schedule){
+
+    schedule.initializePositions();
+    
+    std::vector<std::vector<int>> StudentSchedule = 
+        buildStudentSchedule(schedule.S, schedule.placedEvents, schedule.studentsOfEvent);
+    while (true) {
+
+        Move bestMove;
+        int bestDelta = 0;
         
         findBestSwap(schedule, bestMove, bestDelta, StudentSchedule);
 
         if (bestDelta >= 0)
             break;
 
-        if (bestMove.method == 't')
-            applyMove(schedule, bestMove, StudentSchedule);
-        else if(bestMove.method == 's')
-            applySwap(schedule, bestMove,StudentSchedule);
+        applySwap(schedule, bestMove,StudentSchedule);
     }
 
 }
+
 
 // gleda se samo prvi poboljsavajuci susjed
 // pa su komentari izostavljeni; jedina
@@ -670,10 +702,11 @@ void findFirstTransfer(
     std::vector<std::vector<int>>& StudentSchedule
 ){
     for (int event = 0; event < schedule.numberOfEvents; ++event) {
+        const int oldTimeslot = schedule.currentTimeslot[event];
 
         for (int timeslot = 0; timeslot < schedule.numberOfTimeslots; ++timeslot) {
 
-            if (timeslot == schedule.currentTimeslot[event])
+            if (oldTimeslot == timeslot)
                continue;
 
             if (schedule.eventTimeslot[event][timeslot] == 0)
@@ -733,7 +766,7 @@ void findFirstTransfer(
 
          
             int delta = getCostChange(event, 
-                                      schedule.currentTimeslot[event],
+                                      oldTimeslot,
                                       timeslot,
                                       schedule.studentsOfEvent,
                                       StudentSchedule);
@@ -745,7 +778,6 @@ void findFirstTransfer(
                 bestMove.event = event;
                 bestMove.timeslot = timeslot;
                 bestMove.room = room;
-                bestMove.method = 't';
 
                 return;
             }
@@ -773,7 +805,10 @@ void findFirstSwap(
 
             int room2 = schedule.currentRoom[event2];
 
-            if (timeslot2 == -1 || room2 == -1)
+            if (timeslot1 == -1 || timeslot2 == -1)
+                continue;
+
+            if (room2 == -1)
                 continue;
 
             if (timeslot1 == timeslot2)
@@ -939,7 +974,6 @@ void findFirstSwap(
                 bestMove.timeslot = timeslot2;
                 bestMove.room = newRoom1;
                 bestMove.room2 = newRoom2;
-                bestMove.method = 's';
 
                 return ;
             }
@@ -949,16 +983,9 @@ void findFirstSwap(
 
 
 
-void first_improving_neighbor(TabuSearch& schedule){
+void first_improving_neighbor_transfer(TabuSearch& schedule){
 
     schedule.initializePositions();
-
-    for (int event = 0; event < schedule.numberOfEvents; ++event) {
-        if (schedule.currentTimeslot[event] == -1) {
-            std::cerr << "Local Search zahtijeva feasible raspored.\n";
-            return;
-        }
-    }
     
     std::vector<std::vector<int>> StudentSchedule = 
         buildStudentSchedule(schedule.S, schedule.placedEvents, schedule.studentsOfEvent);
@@ -968,18 +995,32 @@ void first_improving_neighbor(TabuSearch& schedule){
         int bestDelta = 0;
 
         findFirstTransfer(schedule, bestMove, bestDelta, StudentSchedule);
-        
-        if (bestDelta >= 0){
-            findFirstSwap(schedule, bestMove, bestDelta, StudentSchedule);
-        }
 
         if (bestDelta >= 0)
             break;
 
-        if (bestMove.method == 't')
-            applyMove(schedule, bestMove, StudentSchedule);
-        else if(bestMove.method == 's')
-            applySwap(schedule, bestMove,StudentSchedule);
+        applyMove(schedule, bestMove, StudentSchedule);
+    }
+ 
+}
+
+void first_improving_neighbor_swap(TabuSearch& schedule){
+
+    schedule.initializePositions();
+    
+    std::vector<std::vector<int>> StudentSchedule = 
+        buildStudentSchedule(schedule.S, schedule.placedEvents, schedule.studentsOfEvent);
+    while (true) {
+
+        Move bestMove;
+        int bestDelta = 0;
+
+        findFirstSwap(schedule, bestMove, bestDelta, StudentSchedule);
+        
+        if (bestDelta >= 0)
+            break;
+
+        applySwap(schedule, bestMove,StudentSchedule);
     }
  
 }
