@@ -2,14 +2,6 @@
 
 A university course timetabling application project developed for solving the **Post-Enrolment Course Timetabling (PECT)** problem. The project combines a Python/CustomTkinter GUI with C++ implementations of greedy and local-search based approaches.
 
-> **Important:** Before running the application, install the GUI dependency:
->
-> ```bash
-> pip install customtkinter
-> ```
->
-> The project also requires a working **C++ compiler** and **Make** (`make` or `mingw32-make`), because the GUI builds the C++ solvers when an algorithm is started.
-
 ---
 
 ## Table of Contents
