@@ -1,16 +1,14 @@
 *.exe
 
-linkovi.txt
-zavrsni_projekt.txt
-
 *.o
 *.obj
 *.sln
 
 .vscode/
 .vs/
+
 file_readings/
-materijali/
 outputs/
-ls1_outputs/
-ls2_outputs/
+greedy_outputs/
+ls_outputs/
+tabu_outputs/

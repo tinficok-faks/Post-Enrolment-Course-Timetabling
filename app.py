@@ -280,8 +280,6 @@ class App(ctk.CTk):
             message="Odaberi jednu od ponuđenih metoda za prikaz rasporeda."
         )
 
-        subprocess.run(["g++", "check.cpp", "-o", "check.exe"], capture_output=True, text=True)
-
     
     # pokretanje algoritama
     def start_greedy(self):
@@ -295,6 +293,8 @@ class App(ctk.CTk):
         self.status_label.configure(
             text=f"Pohlepna metoda: izgrađivanje i pokretanje za skup podataka dataset{self.selected_dataset_number}..."
         )
+
+        subprocess.run(["g++", "check.cpp", "-o", "check.exe"], capture_output=True, text=True)
 
         threading.Thread(
             target=self.greedy_worker,
@@ -783,7 +783,7 @@ class App(ctk.CTk):
         make_command = self.find_make_command()
 
         return subprocess.run(
-            [make_command],
+            [make_command, "-j"],
             cwd=project_dir,
             capture_output=True,
             text=True,
