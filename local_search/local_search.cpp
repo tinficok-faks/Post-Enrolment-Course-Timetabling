@@ -126,7 +126,7 @@ std::vector<std::vector<int>> buildStudentSchedule(
 
 // prebacujemo event u drugi slobodni timeslot
 void findBestTransfer(
-    TabuSearch& schedule, 
+    SearchHelper& schedule, 
     Move& bestMove,
     int& bestDelta,
     std::vector<std::vector<int>>& StudentSchedule
@@ -324,7 +324,7 @@ int getSwapCostChange(
 
 // zamjenjujemo timeslotove 2 eventa
 void findBestSwap(
-    TabuSearch& schedule,
+    SearchHelper& schedule,
     Move& bestMove,
     int& bestDelta,
     std::vector<std::vector<int>>& studentSchedule
@@ -543,7 +543,7 @@ void findBestSwap(
 }
 
 void applyMove(
-    TabuSearch& schedule, 
+    SearchHelper& schedule, 
     const Move& move,
     std::vector<std::vector<int>>& studentSchedule
 ){
@@ -574,7 +574,7 @@ void applyMove(
 }
 
 void applySwap(
-    TabuSearch& schedule,
+    SearchHelper& schedule,
     const Move& move,
     std::vector<std::vector<int>>& studentSchedule
 ) {
@@ -650,7 +650,7 @@ void applySwap(
     }
 }
 
-void best_improving_neighbor_transfer(TabuSearch& schedule){
+void best_improving_neighbor_transfer(SearchHelper& schedule){
 
     schedule.initializePositions();
     
@@ -671,7 +671,7 @@ void best_improving_neighbor_transfer(TabuSearch& schedule){
 
 }
 
-void best_improving_neighbor_swap(TabuSearch& schedule){
+void best_improving_neighbor_swap(SearchHelper& schedule){
 
     schedule.initializePositions();
     
@@ -697,7 +697,7 @@ void best_improving_neighbor_swap(TabuSearch& schedule){
 // pa su komentari izostavljeni; jedina
 // razlika je sto delta < bestDelta ima return;
 void findFirstTransfer(
-    TabuSearch& schedule, 
+    SearchHelper& schedule, 
     Move& bestMove,
     int& bestDelta,
     std::vector<std::vector<int>>& StudentSchedule
@@ -789,7 +789,7 @@ void findFirstTransfer(
 // isto kao i u prosloj funkciji
 // razlika je sto delta < bestDelta ima return;
 void findFirstSwap(
-    TabuSearch& schedule,
+    SearchHelper& schedule,
     Move& bestMove,
     int& bestDelta,
     std::vector<std::vector<int>>& studentSchedule
@@ -984,7 +984,7 @@ void findFirstSwap(
 
 
 
-void first_improving_neighbor_transfer(TabuSearch& schedule){
+void first_improving_neighbor_transfer(SearchHelper& schedule){
 
     schedule.initializePositions();
     
@@ -1005,7 +1005,7 @@ void first_improving_neighbor_transfer(TabuSearch& schedule){
  
 }
 
-void first_improving_neighbor_swap(TabuSearch& schedule){
+void first_improving_neighbor_swap(SearchHelper& schedule){
 
     schedule.initializePositions();
     

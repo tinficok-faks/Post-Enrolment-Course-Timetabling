@@ -2,12 +2,12 @@
 #define LOCAL_SEARCH_H
 
 #include <vector>
-#include "tabu_search.h"
+#include "filereader.h"
 
-void best_improving_neighbor_transfer(TabuSearch& schedule);
-void best_improving_neighbor_swap(TabuSearch& schedule);
+void best_improving_neighbor_transfer(SearchHelper& schedule);
+void best_improving_neighbor_swap(SearchHelper& schedule);
 
-void first_improving_neighbor_transfer(TabuSearch& schedule);
-void first_improving_neighbor_swap(TabuSearch& schedule);
+void first_improving_neighbor_transfer(SearchHelper& schedule);
+void first_improving_neighbor_swap(SearchHelper& schedule);
 
 #endif

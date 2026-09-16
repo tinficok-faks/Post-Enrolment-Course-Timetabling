@@ -193,3 +193,101 @@ void loadInputSolution(const std::string& filename, EventData& data){
         data.placedEvents[timeslot][room] = event;
     }
 }
+
+// konstruktor
+
+SearchHelper::SearchHelper(
+    std::vector<int>& roomSizes,
+    std::vector<std::vector<int>>& placedEvents,
+    std::vector<int>& unplacedEvents,
+    const std::vector<std::vector<int>>& conflictList,
+    const std::vector<std::vector<int>>& studentsOfEvent,
+    const std::vector<std::vector<int>>& roomFeature,
+    const std::vector<std::vector<int>>& eventFeature,
+    const std::vector<std::vector<int>>& eventTimeslot,
+    const std::vector<std::vector<int>>& precedence,
+    int S
+)
+    : roomSizes(roomSizes),
+      placedEvents(placedEvents),
+      unplacedEvents(unplacedEvents),
+      conflictList(conflictList),
+      studentsOfEvent(studentsOfEvent),
+      roomFeature(roomFeature),
+      eventFeature(eventFeature),
+      eventTimeslot(eventTimeslot),
+      precedence(precedence),
+      S(S)
+{
+    numberOfEvents =
+        static_cast<int>(studentsOfEvent.size());
+
+    numberOfTimeslots =
+        static_cast<int>(placedEvents.size());
+
+    numberOfRooms =
+        static_cast<int>(roomSizes.size());
+
+    initializePositions();
+
+
+    // tabuUntil[event][timeslot]
+    tabuUntil.assign(
+        numberOfEvents,
+        std::vector<int>(numberOfTimeslots, 0)
+    );
+
+
+    currentIteration = 0;
+
+    bestCost = static_cast<int>(unplacedEvents.size());
+}
+
+// inicijalne pozicije evenata
+
+void SearchHelper::initializePositions(){
+
+    // za svaki event spremamo gdje se trenutno nalazi
+    currentTimeslot.assign(numberOfEvents, -1);
+    currentRoom.assign(numberOfEvents, -1);
+
+    for (int timeslot = 0; timeslot < numberOfTimeslots; ++timeslot){
+        for (int room = 0; room < numberOfRooms; ++room){
+            int event = placedEvents[timeslot][room];
+
+            if (event == -1)
+                continue;
+
+
+            currentTimeslot[event] = timeslot;
+            currentRoom[event] = room;
+        }
+    }
+}
+
+// provjerava odgovara li soba eventu
+
+bool SearchHelper::roomCompatible(int event, int room){
+
+    if (roomSizes[room] < static_cast<int>(studentsOfEvent[event].size())){
+        return false;
+    }
+
+    // feature sobe
+
+    for (int feature = 0;
+         feature < static_cast<int>(eventFeature[event].size());
+         ++feature)
+    {
+        // event zahtijeva feature,
+        // ali soba ga nema
+        if (eventFeature[event][feature] == 1 &&
+            roomFeature[room][feature] == 0)
+        {
+            return false;
+        }
+    }
+
+
+    return true;
+}

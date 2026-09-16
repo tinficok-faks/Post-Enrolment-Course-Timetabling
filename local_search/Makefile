@@ -3,7 +3,7 @@ CXX = g++
 CXXFLAGS = -std=c++20 -Wall -Wextra -g -O2
 
 # Popis svih objektnih datoteka koje ti trebaju
-OBJS = main.o filereader.o tabu_search.o output.o local_search.o
+OBJS = main.o filereader.o output.o local_search.o
 
 # 2. PRVI CILJ - Ovo se pokreće kada upišeš samo 'make'
 # Povezuje sve .o datoteke u konačni izvršni program 'main.exe'

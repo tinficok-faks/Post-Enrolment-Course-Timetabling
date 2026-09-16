@@ -1,5 +1,4 @@
 #include "filereader.h"
-#include "tabu_search.h"
 #include "output.h"
 #include "local_search.h"
 
@@ -31,7 +30,7 @@ int main(){
         std::string inputSolution = "../greedy_outputs/raspored_dataset" + std::to_string(datasetNumber) + "_greedy.sln";
         loadInputSolution(inputSolution, data);
 
-        TabuSearch schedule(
+        SearchHelper schedule(
             data.roomSizes,
             data.placedEvents,
             data.unplacedEvents,
