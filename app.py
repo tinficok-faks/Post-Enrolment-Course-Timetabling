@@ -14,7 +14,6 @@ GREEDY_DIR = BASE_DIR / "greedy"
 LOCAL_SEARCH_DIR = BASE_DIR / "local_search"
 
 GREEDY_OUTPUT_DIR = BASE_DIR / "greedy_outputs"
-TABU_SEARCH_OUTPUT_DIR = BASE_DIR / "tabu_outputs"
 LOCAL_SEARCH_1_OUTPUT_DIR = BASE_DIR / "ls_outputs/ls1_outputs/"
 LOCAL_SEARCH_2_OUTPUT_DIR = BASE_DIR / "ls_outputs/ls2_outputs/"
 CHECK_EXECUTABLE = BASE_DIR / "check.exe"
@@ -350,16 +349,16 @@ class App(ctk.CTk):
     def prepare_tabu_baseline(self):
         dataset_number = self.selected_dataset_number
 
-        tabu_output = (
-            TABU_SEARCH_OUTPUT_DIR /
-            f"ts_output{dataset_number}.sln"
-        )
+        #tabu_output = (
+        #    TABU_SEARCH_OUTPUT_DIR /
+        #    f"ts_output{dataset_number}.sln"
+        #)
 
-        if (
-            self.tabu_ready_for_dataset == dataset_number
-            and tabu_output.exists()
-        ):
-            return tabu_output
+        #if (
+        #    self.tabu_ready_for_dataset == dataset_number
+        #    and tabu_output.exists()
+        #):
+        #    return tabu_output
 
         # greedy rjesenje
         build_result = self.build_project(GREEDY_DIR)
@@ -386,39 +385,44 @@ class App(ctk.CTk):
                 )
             )
 
+        tabu_output = (
+            GREEDY_OUTPUT_DIR /
+            f"raspored_dataset{self.selected_dataset_number}_greedy.sln"
+        )
+
         # tabu search
 
-        self.after(
-            0,
-            self.status_label.configure,
-            {
-                "text": (
-                    f"Priprema zajedničkog rješenja tabu pretraživanja za "
-                    f"dataset{dataset_number}..."
-                )
-            }
-        )
-
-        tabu_run = self.run_executable(
-            LOCAL_SEARCH_DIR,
-            dataset_number,
-            -1
-        )
-
-        if tabu_run.returncode != 0:
-            raise RuntimeError(
-                self.format_process_error(
-                    "Tabu pretraživanje nije uspješno izvršeno",
-                    tabu_run
-                )
-            )
-
-        if not tabu_output.exists():
-            raise FileNotFoundError(
-                f"Tabu pretraživanje nije proizvelo:\n{tabu_output}"
-            )
-
-        self.tabu_ready_for_dataset = dataset_number
+        #self.after(
+        #    0,
+        #    self.status_label.configure,
+        #    {
+        #        "text": (
+        #            f"Priprema zajedničkog rješenja tabu pretraživanja za "
+        #            f"dataset{dataset_number}..."
+        #        )
+        #    }
+        #)
+#
+        #tabu_run = self.run_executable(
+        #    LOCAL_SEARCH_DIR,
+        #    dataset_number,
+        #    -1
+        #)
+#
+        #if tabu_run.returncode != 0:
+        #    raise RuntimeError(
+        #        self.format_process_error(
+        #            "Tabu pretraživanje nije uspješno izvršeno",
+        #            tabu_run
+        #        )
+        #    )
+#
+        #if not tabu_output.exists():
+        #    raise FileNotFoundError(
+        #        f"Tabu pretraživanje nije proizvelo:\n{tabu_output}"
+        #    )
+#
+        #self.tabu_ready_for_dataset = dataset_number
 
         return tabu_output
 
@@ -449,7 +453,7 @@ class App(ctk.CTk):
                 self.status_label.configure,
                 {
                     "text": (
-                        f"Priprema rješenja tabu pretraživanjem za "
+                        f"Priprema rješenja lokalnim pretraživanjem za "
                         f"dataset{self.selected_dataset_number}..."
                     )
                 }
@@ -609,7 +613,7 @@ class App(ctk.CTk):
                 self.status_label.configure,
                 {
                     "text": (
-                        f"Priprema rješenja tabu pretraživanjem za "
+                        f"Priprema rješenja lokalnim pretraživanjem za "
                         f"dataset{self.selected_dataset_number}..."
                     )
                 }
@@ -660,7 +664,7 @@ class App(ctk.CTk):
                 self.status_label.configure,
                 {
                     "text": (
-                        f"Priprema rješenja tabu pretraživanjem za "
+                        f"Priprema rješenja lokalnim pretraživanjem za "
                         f"dataset{self.selected_dataset_number}..."
                     )
                 }
@@ -712,7 +716,7 @@ class App(ctk.CTk):
                 self.status_label.configure,
                 {
                     "text": (
-                        f"Priprema rješenja tabu pretraživanjem za "
+                        f"Priprema rješenja lokalnim pretraživanjem za "
                         f"dataset{self.selected_dataset_number}..."
                     )
                 }

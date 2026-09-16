@@ -56,7 +56,6 @@ A solution may leave some events unplaced and still remain **valid**. The result
 - CustomTkinter desktop GUI for selecting datasets and running algorithms
 - Support for all 24 listed datasets (`dataset1.tim` ... `dataset24.tim`)
 - Greedy timetable construction.
-- Tabu Search used as a starting solution for local search.
 - Four local-search configurations:
   - Best-improving Transfer
   - First-improving Transfer
@@ -77,8 +76,6 @@ The greedy solver parses the selected `.tim` instance, builds a conflict graph, 
 
 ### Local Search
 
-Tabu Search is used to produce a common starting solution for the local-search methods. The current implementation solves the selected dataset and stores the resulting schedule in `tabu_outputs`.
-
 Two neighbourhood concepts are implemented:
 
 **Transfer neighbourhood** — moves an event from its current assignment to another valid assignment
@@ -90,7 +87,7 @@ For both neighbourhoods the implementation provides:
 - **Best-improving neighbour** — examines candidates and chooses the best improvement
 - **First-improving neighbour** — stops at the first improving candidate
 
-The executable accepts method numbers `1–4` for these combinations, while `-1` generates only the Tabu Search solution.
+The executable accepts method numbers `1–4` for these combinations
 
 ---
 
@@ -141,7 +138,7 @@ Choose one of the available methods:
 | **Best-improving Swap** | Local search with Swap neighbourhood. |
 | **First-improving Swap** | Local search with Swap neighbourhood. |
 
-For local search, the application first prepares a Tabu Search solution and then uses it as the starting schedule.
+For local search, the application first checks if greedy solution is ready and then uses it as the starting schedule.
 
 ### Step 3 — Inspect the result
 
@@ -212,16 +209,14 @@ Post-Enrolment-Course-Timetabling/
 │   ├── timetable.*                   # Timetable construction/evaluation helpers
 │   └── Makefile                      # Build rules
 │
-├── local_search/                     # Tabu Search + Local Search
+├── local_search/                     # Local Search
 │   ├── main.cpp                      # Algorithm entry point
 │   ├── filereader.*                  # Input/solution loading
-│   ├── tabu_search.*                 # Tabu Search implementation
 │   ├── local_search.*                # Transfer and Swap neighbourhoods
 │   ├── output.*                      # Solution writing helpers
 │   └── Makefile                      # Build rules
 │
 ├── greedy_outputs/                   # Greedy-generated solution files
-├── tabu_outputs/                     # Tabu Search solution files
 ├── ls_outputs/
 │   ├── ls1_outputs/                  # Best-improving results
 │   └── ls2_outputs/                  # First-improving results

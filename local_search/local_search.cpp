@@ -54,7 +54,8 @@ int getCostChange(int event, int oldts, int newts,
             studentSchedule[student][newts] = 0;
         }
 
-        return after;
+        int before = 1e9;
+        return after - before;
     }
 
     int oldDay = oldts / 9;

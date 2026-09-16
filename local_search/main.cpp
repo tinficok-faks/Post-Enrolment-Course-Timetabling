@@ -5,34 +5,6 @@
 
 #include <iostream>
 
-void createTabuSolution(int datasetNumber) {
-    EventData data = readfiles(std::to_string(datasetNumber));
-
-    TabuSearch ts(
-        data.roomSizes,
-        data.placedEvents,
-        data.unplacedEvents,
-        data.conflictList,
-        data.studentsOfEvent,
-        data.roomFeature,
-        data.eventFeature,
-        data.eventTimeslot,
-        data.precedence,
-        data.S
-    );
-
-    ts.solve(200000);
-
-    writeSolution(
-        "../tabu_outputs/ts_output" + std::to_string(datasetNumber) + ".sln",
-        ts.numberOfEvents,
-        ts.placedEvents,
-        datasetNumber
-    );
-
-}
-
-
 int main(){
 
     try{
@@ -48,10 +20,6 @@ int main(){
         if (datasetNumber < 1 || datasetNumber > 24)
             throw std::invalid_argument("Broj dataseta mora biti izmedu 1 i 24.");
 
-        if(methodNumber == -1){
-            createTabuSolution(datasetNumber);
-            return 0;
-        }
 
         if ( methodNumber < 1 || methodNumber > 4) {
             throw std::invalid_argument("Broj metode mora biti 1, 2, 3 ili 4.");
@@ -59,7 +27,8 @@ int main(){
     
         EventData data = readfiles(std::to_string(datasetNumber));
         
-        std::string inputSolution = "../tabu_outputs/ts_output" + std::to_string(datasetNumber) + ".sln";
+
+        std::string inputSolution = "../greedy_outputs/raspored_dataset" + std::to_string(datasetNumber) + "_greedy.sln";
         loadInputSolution(inputSolution, data);
 
         TabuSearch schedule(
